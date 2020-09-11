@@ -1,0 +1,31 @@
+{
+  "name": "storeapi",
+  "version": "1.0.0",
+  "description": "Inventory Managament API's",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js | ./node_modules/bunyan/bin/bunyan",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "digipane",
+  "license": "ISC",
+  "dependencies": {
+    "@elastic/elasticsearch": "^7.8.0",
+    "bcrypt": "^5.0.0",
+    "body-parser": "^1.19.0",
+    "bunyan": "^1.8.14",
+    "config": "^3.3.1",
+    "crypto": "^1.0.1",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.20",
+    "morgan": "^1.10.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^2.1.0",
+    "passport": "^0.4.1",
+    "passport-jwt": "^4.0.0",
+    "passport-local": "^1.0.0",
+    "pino": "^6.6.0",
+    "rand-token": "^1.0.1"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "SERVER" : {
+      "PORT"        : 8080,
+      "API_BASE"    : "/kd",
+      "LOG_PERIOD"  : "1d",
+      "MAX_LOGS"    : 5,
+      "IS_PROD"     : false,
+      "FAKE_X_POWERED" : "Undertow/1",
+      "FAKE_SERVER_TAG" : "WildFly/9",
+      "API"         : {
+          "VERSION"     : "1.0.3",
+          "AND_UP"      : 1,
+          "AND_MSG"     : "We're taking shower, Will be back soon.",
+          "AND_MIN_VERSION" : "1.8",
+          "AND_LINK"    : "https://play.google.com/store/apps/details?id=com.facebook.katana&hl=en",
+          "IOS_UP"      : 1,
+          "IOS_MSG"     : "We're taking shower, Will be back soon.",
+          "IOS_MIN_VERSION" : "1.0",
+          "IOS_LINK"    : "https://itunes.apple.com/us/app/facebook/id284882215?mt=8"
+      }
+  },
+  "DB" : {
+    "URL"           : "mongodb://localhost:27017/knowq",
+    "USERNAME"      : "adminkq",
+    "PASSWORD"      : "abc123",
+    "POOL_SIZE"     : 5,
+    "DEBUG"         : true,
+    "SCHEMA"        : {
+      "DEFAULT_APP_DURATION"  : 15,
+      "DEFAULT_MAX_TOKENS"    : 40,
+      "DEFAULT_PRIORITY"      : 0,
+      "DEFAULT_APP_TYPE"      : 0,
+      "DEFAULT_OTHER_PRIORITIES" : 10,
+      "DEFAULT_MAX_APPS"      : 30
+    }
+
+  }
+
+}
