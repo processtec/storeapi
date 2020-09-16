@@ -27,6 +27,8 @@ const getComponent = async (req, res) => {
         cmpId: cmpId
     });
     return res.send(component);//TODO parse them before sending
+    // const imagedComponent = addImages([component]);
+    // return res.send(imagedComponent);//TODO parse them before sending
 };
 
 const getComponents = async (req, res) => {
@@ -52,10 +54,34 @@ const addImages = (components) => {
     let result = [];
     for (let index = 0; index < components.length; index++) {
         let component = components[index]._source;
-        component.images = ["https://www.hpeprocess.com/wp-content/uploads/2011/08/Visco-Twin-Pumps-300x240.png",
+        if(component.url.length > 1) {
+            const completeURL = getBasePath(component.path) + "/" + component.url
+            component.images = [getBasePath(component.path) + "/" + component.url];    
+        } else {
+            component.images = ["https://www.hpeprocess.com/wp-content/uploads/2011/08/Visco-Twin-Pumps-300x240.png",
         "https://docplayer.net/docs-images/53/31653923/images/1-0.png"];
+        }
+        
         result.push(component);
     }
+    return result;
+};
+
+const getBasePath = (path) => {
+    // var str = "C:\\inetpub\\wwwroot\\EData4u\\Uploads\\Documentation\\D\\A1";
+    const subPath = path.substr(35);
+
+//   var str = "C:\\inetpub\\wwwroot\\EData4u\\Uploads\\Documentation\\D\\A1";
+  const pathTokens = subPath.split("\\"); //0: Documentation, 1: D, 2: A1
+  let result = "http://127.0.0.1:8080/static/images";
+  for (let index = 0; index < pathTokens.length; index++) {
+      const element = pathTokens[index];
+      result += "/" + element;
+  }
+
+    // C:\\inetpub\\wwwroot\\EData4u\\Uploads\\Documentation\\D\\A1
+    // Documentation\\D\\A1
+
     return result;
 };
 

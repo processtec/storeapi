@@ -36,7 +36,7 @@ const storeConst = {
     },
 
     ES: {
-        INDEX_COMPONENTS: "complete_edata4u_05_29_2020_index"
+        INDEX_COMPONENTS: "complete_comps_08_15_2020"
     },
 
     ALERT: {
