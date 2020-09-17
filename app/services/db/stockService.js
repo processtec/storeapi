@@ -33,8 +33,8 @@ const addProductTx = async (options) => {
 
     try {
 
-        //TODO: Check the type/status of product. 
-        // If its ready and inspected then only update stock avaialble quantity otherwise 
+        //TODO: Check the type/status of product.
+        // If its ready and inspected then only update stock avaialble quantity otherwise
         // just add to product.
         /*Ordered 0
   available 1
@@ -48,7 +48,7 @@ const addProductTx = async (options) => {
         let stockResult = stockSearchResult;
         if (!stockSearchResult.idstock) {
           //create a new stock with cmp if stock entry not present.
-          const stock = createStock(connection, options); 
+          const stock = createStock(connection, options);
           options.idstock = stock.idstock
           stockResult = stock;
         }*/
@@ -63,7 +63,7 @@ const addProductTx = async (options) => {
             options.lastModifiedBy = "in Future.";
             const updateStockResult = await updateStockForAddingProduct(connection, options);
         }
-        
+
         await connection.commit();
     } catch (err) {
         await connection.rollback();
@@ -185,6 +185,26 @@ const create = async (connection, options) => {
         };
     }
 };
+
+const getAvailableProductsForStockId = async (options) => {
+    logger.debug('fetching products/items for a stockID:', options.stockId);
+    let result;
+    try { //next one is failing
+        const [rows, fields] = await db.execute('SELECT prod.idproduct, prod.idcmp, prod.idsupplier, prod.idvendor, prod.mpin, prod.serialno, prod.idtag, prod.status, prod.costprice, prod.saleprice, prod.idpo, prod.idoc, prod.idstock, prod.supplier_company, prod.vendor_company, loca.name, loca.level, loca.zone, loca.rack FROM store.product as prod left join store.location as loca ON loca.idlocation = prod.idlocation where prod.idstock = ? AND prod.idcmp = ? AND prod.status = ? AND prod.isActive = 1 ORDER BY prod.createdOn ASC', [options.stockId, options.cmpId, SConst.PRODUCT.STATUS.AVAILABLE]);
+        result = rows;
+        logger.info({
+            id: options.reqId,
+            result: result
+        }, "products fetched for a stock.");
+    } catch (e) {
+        // TODO return custom errors.
+        logger.error(e);
+        result = e;
+    } finally {
+        return result;
+    }
+};
+
 // ==========================
 
 
@@ -253,7 +273,7 @@ const findOneByComponent = async (id) => {
     try {
         const [rows, fields] = await db.execute('SELECT * from site where idcmp = ? LIMIT 0, 1', [id]);
         result = rows;
-        
+
     } catch (e) {
         // TODO return error
         logger.error(e);
@@ -263,14 +283,36 @@ const findOneByComponent = async (id) => {
     }
 };
 
-const findOne = async (id) => {
-    logger.debug("will be returning stock for idstock...");
+const findOne = async (options) => {
+    logger.debug({
+        id: options.reqId
+    },"will be returning stock for idstock:", options.stockId);
 
     let result;
     try {
-        const [rows, fields] = await db.execute('SELECT * from site where idstock = ?', [id]);
+        const [rows, fields] = await db.execute('SELECT * from store.stock where idstock = ?', [options.stockId]);
         result = rows;
-        
+
+    } catch (e) {
+        // TODO return error
+        logger.error(e);
+        result = e;
+    } finally {
+        return result;
+    }
+};
+
+
+const findOneByComponentId = async (options) => {
+    logger.debug({
+        id: options.reqId
+    },"will be returning stock for idcmp:", options.cmpId);
+
+    let result;
+    try {
+        const [rows, fields] = await db.execute('SELECT * from store.stock WHERE idcmp = ? LIMIT 0, 1', [options.cmpId]);
+        result = rows;
+
     } catch (e) {
         // TODO return error
         logger.error(e);
@@ -287,7 +329,7 @@ const deactivate = async (id) => {
     try {
         const [rows, fields] = await db.execute('UPDATE stock SET isActive = 0 where idsite = ?', [id]);
         result = rows;
-        
+
     } catch (e) {
         // TODO return error
         logger.error(e);
@@ -316,7 +358,10 @@ const deactivateByComponent = async (id) => {
 
 module.exports = {
     addProductTx,
-    sellProductTx
+    sellProductTx,
+    findOne,
+    findOneByComponentId,
+    getAvailableProductsForStockId
     /*create,
     findAll,
     findOne,

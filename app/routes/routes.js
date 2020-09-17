@@ -47,9 +47,12 @@ const register = (options) => {
   /** #############  DB  ############# */
 
   // stock & product
-  router.get('/stock', stock.getStocks);
+  router.get('/stock/component/:stockId/:cmpId', stock.getProductsByComponentAndStock);
+  router.get('/stock/component/:id', stock.getStockByComponent);
+  router.get('/stock/:id', stock.getStock);
   router.post('/stock', stock.addProduct); // TODO move it out
   router.put('/stock', stock.sellProduct);
+  
 
   // router.put('/product', product.modify); to change status of a specific product
 

@@ -6,23 +6,78 @@
 const errorRes = require('../../../../lib/error/storeError');
 const {
     addProductTx,
-    sellProductTx
+    sellProductTx,
+    findOne,
+    findOneByComponentId,
+    getAvailableProductsForStockId
 } = require('../../../services/db/stockService');
 const {
     SConst
 } = require('../../../constants/storeConstants');
-
+const sender = require('../../../../lib/util/responseSender');
 const logger = require('../../../../lib/logger/bunyanLogger').logger('');
 
 
-const getStocks = async (req, res) => {
-    // TODO
-    logger.debug("will send some stocks from here");
-    res.status(201);
-    res.json({
-        test: "TODO"
-    });
+const getStock = async (req, res) => {
+  logger.info({
+      id: req.id,
+      stockId: req.params.id
+  }, "Get stocks called.");
+
+  const stockId = Number(req.params.id);
+  if (!Number.isInteger(stockId)) {
+      return res.send(errorRes("stock id should be an integar!", "path", "stack", "code"));
+  }
+
+  const stock = await findOne({
+      stockId: stockId,
+      reqId: req.id
+  });
+
+  return sender.send(res, stock);
 };
+
+const getProductsByComponentAndStock = async (req, res) => {
+  logger.info({
+      id: req.id,
+      stockId: req.params.stockId,
+      cmpId: req.params.cmpId,
+  }, "Get getProductsByComponentAndStock called.");
+
+  const stockId = Number(req.params.stockId);
+  const cmpId = Number(req.params.cmpId);
+  if (!Number.isInteger(stockId) || !Number.isInteger(cmpId)) {
+      return res.send(errorRes("stockId or cmpId should be an integar!", "path", "stack", "code"));
+  }
+
+  const stock = await getAvailableProductsForStockId({
+      stockId: stockId,
+      cmpId: cmpId,
+      reqId: req.id
+  });
+
+  return sender.send(res, stock);
+};
+
+
+const getStockByComponent = async (req, res) => {
+    logger.info({
+        id: req.id,
+        cmpId: req.params.id
+    }, "Get stocks called.");
+
+    const cmpId = Number(req.params.id);
+    if (!Number.isInteger(cmpId)) {
+        return res.send(errorRes("cmpId  should be an integar!", "path", "stack", "code"));
+    }
+
+    const stock = await findOneByComponentId({
+        cmpId: cmpId,
+        reqId: req.id
+    });
+
+    return sender.send(res, stock);
+  };
 
 const validateAddParams = (body) => {
     if (!body.cmpId) return {
@@ -54,7 +109,7 @@ const validateAddParams = (body) => {
     /*
     if (!body.idOC)             return { errMsg: 'idOC missing.' };
     if (!body.idStock)          return { errMsg: 'idStock missing.' };
-    
+
     if (!body.supplierCompany)  return { errMsg: 'supplierCompany missing.' };
     if (!body.vendorCompany)    return { errMsg: 'vendorCompany missing.' };
     */
@@ -85,7 +140,7 @@ const addProduct = async (req, res) => {
     }
 
     let response = errorRes("unknown status", "path", "stack", "400");
-    try {        
+    try {
         switch (params.status) {
             case SConst.PRODUCT.STATUS.AVAILABLE:
                 await addProductTx(params);
@@ -95,7 +150,7 @@ const addProduct = async (req, res) => {
                 break;
 
             default:
-                logger.error("Case not handedled for status: " + params.status); 
+                logger.error("Case not handedled for status: " + params.status);
         }
     } catch (error) {
         response = errorRes(error.message, "path", "stack", "400");
@@ -116,8 +171,8 @@ const validateSellParams = (body) => {
     if (!body.ocId) return {
         errMsg: 'ocId missing.'
     };
-    
-    
+
+
     return {
         params: {
             cmpId: body.cmpId,
@@ -142,7 +197,9 @@ const sellProduct = async (req, res) => {
 
 
 module.exports = {
-    getStocks,
+    getStock,
+    getProductsByComponentAndStock,
+    getStockByComponent,
     addProduct,
     sellProduct
 };

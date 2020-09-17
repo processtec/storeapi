@@ -413,7 +413,7 @@ const deleteProductsInCartTx = async (connection, options) => {
         logger.info({
             id: options.reqId,
             result: result
-        }, "products removed from a cart");    
+        }, "products removed from a cart");
     } catch (e) {
         // TODO return error
         logger.error(e);
