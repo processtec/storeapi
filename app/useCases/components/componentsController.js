@@ -26,9 +26,10 @@ const getComponent = async (req, res) => {
         reqId: req.id,
         cmpId: cmpId
     });
-    return res.send(component);//TODO parse them before sending
-    // const imagedComponent = addImages([component]);
-    // return res.send(imagedComponent);//TODO parse them before sending
+    // return res.send(component);//TODO parse them before sending
+    
+    const imagedComponent = addImages(component);
+    return res.send(imagedComponent);//TODO parse them before sending
 };
 
 const getComponents = async (req, res) => {
@@ -58,8 +59,7 @@ const addImages = (components) => {
             const completeURL = getBasePath(component.path) + "/" + component.url
             component.images = [getBasePath(component.path) + "/" + component.url];    
         } else {
-            component.images = ["https://www.hpeprocess.com/wp-content/uploads/2011/08/Visco-Twin-Pumps-300x240.png",
-        "https://docplayer.net/docs-images/53/31653923/images/1-0.png"];
+            component.images = ["http://127.0.0.1:8080/static/images/app/under_construction.png"];
         }
         
         result.push(component);
@@ -69,10 +69,26 @@ const addImages = (components) => {
 
 const getBasePath = (path) => {
     // var str = "C:\\inetpub\\wwwroot\\EData4u\\Uploads\\Documentation\\D\\A1";
-    const subPath = path.substr(35);
+                //   C:\\inetpub\\wwwroot\\Leyla\\Uploads\\Documentation\\S\\CH
+    // const subPath = path.substr(35);
+    // const baseToken = path.split("\\Uploads\\");
+    // const test2 = path.split("\\Documentation\\");
+
+    if(!path.includes("\\Uploads\\")) {
+        return "http://127.0.0.1:8080/static/images/app/under_construction.png";
+    }
+
+    const baseToken = path.split("\\Uploads\\");
+
+    if(baseToken.length < 2) {
+        return "http://127.0.0.1:8080/static/images/app/under_construction.png";
+    }
+
+
 
 //   var str = "C:\\inetpub\\wwwroot\\EData4u\\Uploads\\Documentation\\D\\A1";
-  const pathTokens = subPath.split("\\"); //0: Documentation, 1: D, 2: A1
+//   const pathTokens = subPath.split("\\"); //0: Documentation, 1: D, 2: A1
+    const pathTokens = baseToken[1].split("\\");
   let result = "http://127.0.0.1:8080/static/images";
   for (let index = 0; index < pathTokens.length; index++) {
       const element = pathTokens[index];
