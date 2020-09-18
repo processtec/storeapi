@@ -62,7 +62,8 @@ const addImages = (components) => {
         if(component.url.length > 1) {
             component.images = [getBasePath(component.path) + "/" + component.url];    
         } else {
-            component.images = ["http://127.0.0.1:8080/static/images/app/under_construction.png"];
+            const baseURL = "http://"+IMG_IP + ":"+ IMG_PORT + "/static/images";
+            component.images = [baseURL+"/app/under_construction.png"];
         }
         
         result.push(component);
