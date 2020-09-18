@@ -5,6 +5,10 @@
 
 const { componentById, componentsSearched } = require('../../services/search/componentsSearchService');
 const errorRes = require('../../../lib/error/storeError');
+const config = require('config');
+const IMG_PORT = config.get('SERVER.PORT');
+const IMG_IP = config.get('SERVER.IP');
+
 const {
     SConst
 } = require('../../constants/storeConstants');
@@ -56,7 +60,6 @@ const addImages = (components) => {
     for (let index = 0; index < components.length; index++) {
         let component = components[index]._source;
         if(component.url.length > 1) {
-            const completeURL = getBasePath(component.path) + "/" + component.url
             component.images = [getBasePath(component.path) + "/" + component.url];    
         } else {
             component.images = ["http://127.0.0.1:8080/static/images/app/under_construction.png"];
@@ -73,15 +76,16 @@ const getBasePath = (path) => {
     // const subPath = path.substr(35);
     // const baseToken = path.split("\\Uploads\\");
     // const test2 = path.split("\\Documentation\\");
+    const baseURL = "http://"+IMG_IP + ":"+ IMG_PORT + "/static/images";
 
     if(!path.includes("\\Uploads\\")) {
-        return "http://127.0.0.1:8080/static/images/app/under_construction.png";
+        return baseURL+ "/app/under_construction.png";
     }
 
     const baseToken = path.split("\\Uploads\\");
 
     if(baseToken.length < 2) {
-        return "http://127.0.0.1:8080/static/images/app/under_construction.png";
+        return baseURL+ "/app/under_construction.png";
     }
 
 
@@ -89,7 +93,7 @@ const getBasePath = (path) => {
 //   var str = "C:\\inetpub\\wwwroot\\EData4u\\Uploads\\Documentation\\D\\A1";
 //   const pathTokens = subPath.split("\\"); //0: Documentation, 1: D, 2: A1
     const pathTokens = baseToken[1].split("\\");
-  let result = "http://127.0.0.1:8080/static/images";
+  let result = baseURL;
   for (let index = 0; index < pathTokens.length; index++) {
       const element = pathTokens[index];
       result += "/" + element;

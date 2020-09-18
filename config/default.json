@@ -1,6 +1,8 @@
 {
   "SERVER" : {
       "PORT"        : 8080,
+      "IP"          : "50.18.9.107",
+      "PUBLIC_DIR"  : "../../public",
       "API_BASE"    : "/kd",
       "LOG_PERIOD"  : "1d",
       "MAX_LOGS"    : 5,
