@@ -93,8 +93,8 @@ const validateAddParams = (body) => {
         errMsg: 'mpin missing.'
     };
     // if (!body.serialNumber)     return { errMsg: 'serialNumber missing.' }; // using idProduct generated one.
-    if (!body.status) return {
-        errMsg: 'idTag status.'
+    if (!Number.isInteger(body.status)) {
+        errMsg: 'wrong status.'
     };
     if (!body.costPrice) return {
         errMsg: 'costPrice missing.'
@@ -142,6 +142,7 @@ const addProduct = async (req, res) => {
     let response = errorRes("unknown status", "path", "stack", "400");
     try {
         switch (params.status) {
+            case SConst.PRODUCT.STATUS.ORDERED:
             case SConst.PRODUCT.STATUS.AVAILABLE:
                 await addProductTx(params);
                 response = {
