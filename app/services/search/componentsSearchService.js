@@ -56,8 +56,9 @@ const componentsSearched = async (options) => {
                 query: {
                     multi_match: {
                         query: options.q,
-                        type: 'best_fields', // this will convert it to dis_max-- https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-best-fields
-                        fields: ['elastomerdescription', 'taxonomy', 'mfgmodelnumber', 'materialdescription', 'stockroomlabel', 'configurationcode']
+                        // type: 'best_fields', // this will convert it to dis_max-- https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-best-fields
+                        type: 'cross_fields', // without AND -> https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-cross-fields
+                        fields: ['companyname', 'mfgmodelnumber', 'mfgpartnumber', 'sizes', 'elastomers', 'materials', 'taxonomy', 'categorydescription', 'configurationkey']
                     }
                 }
             }

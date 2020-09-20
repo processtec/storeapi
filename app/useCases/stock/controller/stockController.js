@@ -142,7 +142,7 @@ const addProduct = async (req, res) => {
     let response = errorRes("unknown status", "path", "stack", "400");
     try {
         switch (params.status) {
-            case SConst.PRODUCT.STATUS.ORDERED:
+            case SConst.PRODUCT.STATUS.ORDERED: // TODO remove from here as location cannot be provided for this.
             case SConst.PRODUCT.STATUS.AVAILABLE:
                 await addProductTx(params);
                 response = {
