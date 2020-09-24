@@ -25,7 +25,9 @@ const getPO = async (req, res) => {
         reqId: req.id,
         poID: poID
     });
-    return res.send(po);//TODO parse them before sending
+
+    const result =  sanitizePO(po);
+    return res.send(result);//TODO parse them before sending
 };
 
 const searchPO = async (req, res) => {
@@ -43,7 +45,18 @@ const searchPO = async (req, res) => {
             reqId: req.id,
             query: query
         });
-    return res.send(pos); //TODO parse them before sending
+    
+    const result =  sanitizePO(pos);
+    return res.send(result); //TODO parse them before sending
+};
+
+const sanitizePO = (pos) => {
+    let result = [];
+    for (let index = 0; index < pos.length; index++) {
+        let po = pos[index]._source;
+        result.push(po);
+    }
+    return result;
 };
 
 module.exports = {

@@ -25,7 +25,8 @@ const getOC = async (req, res) => {
         reqID: req.id,
         ocID: ocID
     });
-    return res.send(oc);//TODO parse them before sending
+    const result = sanitizedOC(oc);
+    return res.send(result);//TODO parse them before sending
 };
 
 const searchOC = async (req, res) => {
@@ -43,7 +44,18 @@ const searchOC = async (req, res) => {
         reqID: req.id,
         query: query
     });
-    return res.send(ocs); //TODO parse them before sending
+    const result = sanitizedOC(ocs);
+    return res.send(result); //TODO parse them before sending
+};
+
+
+const sanitizedOC = (ocs) => {
+    let result = [];
+    for (let index = 0; index < ocs.length; index++) {
+        let oc = ocs[index]._source;
+        result.push(oc);
+    }
+    return result;
 };
 
 module.exports = {
