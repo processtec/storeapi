@@ -45,7 +45,8 @@ const poByQuery = async (options) => {
                 query: {
                     multi_match: {
                         query: options.query,
-                        type: 'best_fields', // this will convert it to dis_max-- https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-best-fields
+                        // type: 'best_fields', // this will convert it to dis_max-- https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-best-fields
+                        type: 'cross_fields',
                         fields: ['purchaseordercode', 'jobname', "costcenterid"]
                     }
                 }
