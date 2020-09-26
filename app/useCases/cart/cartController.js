@@ -71,6 +71,27 @@ const getCarts = async (req, res) => {
     return res.send(carts); //TODO parse them before sending
 };
 
+const getCartsWithDetails = async (req, res) => {
+    logger.info({
+        id: req.id
+    }, "getting all carts for a user.");
+    const decodedRole = req.decoded.role;
+    if (!isRoleValid(expectedRole, decodedRole)) {
+        logger.error({id: req.id,
+            error: 'forbidden'
+        }, "user not allowed.");
+        return sender.send(res, forbiddenResult);
+    }
+    const userName = req.decoded.username;
+    const userId = req.decoded.id;
+    const carts = await service.getAllWithDetails({
+        userName: userName,
+        userId: userId,
+        reqId: req.id
+    });
+    return res.send(carts); //TODO parse them before sending
+};
+
 const createCart = async (req, res) => {
     const decodedRole = req.decoded.role;
     if (!isRoleValid(expectedRole, decodedRole)) {
@@ -315,6 +336,7 @@ const deleteProduct = async (req, res) => {
 
 module.exports = {
     getCarts,
+    getCartsWithDetails,
     getCart,
 
     createCart,

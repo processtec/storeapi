@@ -58,6 +58,7 @@ const register = (options) => {
 
   // CART
   router.get('/cart/all', cart.getCarts);
+  router.get('/cart/alldetails', cart.getCartsWithDetails);
   router.get('/cart/:id', cart.getCart);
 
   router.post('/cart', cart.createCart);

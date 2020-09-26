@@ -30,6 +30,22 @@ const getById = async (options) => {
 
 const getAll = async (options) => {
     logger.debug('fetching all carts for user:', options.userName);
+    const carts = await getCarts(options);
+    /*for (let index = 0; index < carts.length; index++) {
+        const cart = carts[index];
+        const stocks = await getDetailedStocksForACart({
+            idcart: cart.idcart
+        });
+
+        // get other details like name etc. too //TODO
+        carts[index].stocks = stocks;
+    }*/
+
+    return carts;
+};
+
+const getAllWithDetails = async (options) => {
+    logger.debug('fetching all carts for user:', options.userName);
     let carts = await getCarts(options);
     for (let index = 0; index < carts.length; index++) {
         const cart = carts[index];
@@ -596,6 +612,7 @@ const markCartInActiveTx = async (connection, options) => {
 
 module.exports = {
     getAll,
+    getAllWithDetails,
     getById,
     create,
     modifyStatus,
