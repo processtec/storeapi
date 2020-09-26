@@ -45,11 +45,14 @@ const getAll = async (options) => {
 };
 
 const create = async (options) => {
-    logger.debug("creating a new cart for PO:", options.poID);
+
+    logger.debug({
+        id: options.reqId
+    },"creating a new cart for oc:", options.ocId);
 
     let result;
     try {
-        const [rows, fields] = await db.query('INSERT INTO store.cart SET idUser = ?, status = ?, fname = ?, lname = ?, idpo = ?', [options.idUser, SConst.CART.STATUS.AVAILABLE, options.fname, options.lname, options.idpo]);
+        const [rows, fields] = await db.query('INSERT INTO store.cart SET idUser = ?, status = ?, fname = ?, lname = ?, idpo = ?, idOC = ?, jobname = ?, costcenterid = ?, title = ?, description = ?', [options.idUser, SConst.CART.STATUS.AVAILABLE, options.fname, options.lname, options.idpo, options.idoc, options.jobname, options.costcenterid, options.title, options.description]);
         result = rows;
         logger.info({
             id: options.reqId,
@@ -139,8 +142,7 @@ const deleteOne = async (options) => {
 
 const addProductToCart = async (options) => {
     logger.debug({
-        id: req.id,
-        result: results
+        id: options.reqId
     },"adding a new product for cartId:", options.cartId);
 
     let result;

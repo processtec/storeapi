@@ -84,14 +84,24 @@ const createCart = async (req, res) => {
     const userName = req.decoded.username;
     const fName = req.decoded.fName;
     const lName = req.decoded.lName;
-    const poId = req.body.poId;
+    const poId = req.body.ocId;
+    const ocId = req.body.ocId;
+    const jobname = req.body.jobname || "";
+    const costcenterid = req.body.costcenterid || "";
+    const title = req.body.title || "";
+    const description = req.body.description;
 
     const carts = await service.create({
         idUser: userId,
         fname: fName,
         lname: lName,
         idpo: poId,
-        reqId: req.id
+        idoc: ocId,
+        jobname: jobname,
+        costcenterid: costcenterid,
+        title: title,
+        reqId: req.id,
+        description: description
     });
     return res.send(carts); //TODO parse them before sending
 };
