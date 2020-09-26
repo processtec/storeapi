@@ -76,6 +76,7 @@ const register = (options) => {
   router.get('/warehouse', warehouse.getWarehouses);
 
 //   LOCATION
+  router.get('/location/search', location.searchLocation);
   router.get('/location/all', location.getLocations);
   router.get('/location/:id', location.getLocation);
   router.post('/location', location.createLocation);

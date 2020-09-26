@@ -41,6 +41,20 @@ const getLocations = async (req, res) => {
   return res.send(result); //TODO parse them before sending
 };
 
+const searchLocation = async (req, res) => {
+  const userName = req.decoded.username;
+  const userId = req.decoded.id;
+  const query = req.query;
+
+  const result = await service.search({
+    userName: userName,
+    userId: userId,
+    query: query,
+    reqId: req.id
+  });
+  return res.send(result); //TODO parse them before sending
+};
+
 const createLocation = async (req, res) => {
   const userId = req.decoded.id;
   
@@ -119,6 +133,7 @@ const deleteLocation = async (req, res) => {
 
 
 module.exports = {
+  searchLocation,
   getLocations,
   getLocation,
   createLocation,
