@@ -4,6 +4,8 @@
 "use strict";
 
 const _ = require('lodash');
+const leylaImage = require('../../../lib/util/leylaImage');
+const componentService = require('../../services/search/componentsSearchService');
 const alertService = require('./alertService');
 const logger = require('../../../lib/logger/bunyanLogger').logger('');
 const {
@@ -487,7 +489,13 @@ const getDetailedStocksForACart = async (options) => {
             idStock: idStock
         });
 
+        const stockImages = await componentService.componentById({
+            reqId: options.reqId,
+            cmpId: stockDetails[0].idcmp
+        });
+
         stocks[i].details = stockDetails[0];
+        stocks[i].details.images = leylaImage.getImages(stockImages[0]._source);
     }
 
     return stocks;
