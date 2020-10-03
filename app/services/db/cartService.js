@@ -219,9 +219,9 @@ const checkoutACart = async (options) => {
         let detailedMessage = "";
         for (let index = 0; index < stocks.length; index++) {
             const stock = stocks[index];
-            const availablequantity = stock.details.availablequantity;
+            const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
 
-            const limit = stock.quantity;
+            const limit = stock.quantity; // quantity asked by user in cart
             const products = await getProductsForStockId(options, stock, limit);
             // 3. If quantity asked for any of the product in cart is less than available in stocks table discard the transaction with reason.
             if (products.length < stock.quantity) {
@@ -251,6 +251,13 @@ const checkoutACart = async (options) => {
                 // above one not woking....
             }
 
+            //update stock quantity
+            await updateStockForCartCheckout(connection, {
+              availablequantity: availablequantity,
+              quantity: limit,
+              idUser: options.userId,
+              idstock: stock.idstock
+            });
         }
 
         // 7. mark cart as completed
@@ -308,6 +315,30 @@ const deleteAProduct = async (options) => {
 /**
 Private
 */
+
+const updateStockForCartCheckout = async (connection, options) => {
+    logger.debug("updating stock for cart checkout.");
+    const newQuantity = options.availablequantity  - options.quantity;
+    const availablequantity = newQuantity < 0 ? 0 :  newQuantity;
+
+    // const maximumquantity = options.stock.maximumquantity < availablequantity; // TODO send an alert. Do I need a new alert table?
+
+    let result;
+    try {
+        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, lastModifiedBy = ? where idstock = ?', [availablequantity, options.idUser, options.idstock]);
+        result = rows;
+        logger.info({
+            id: options.reqId,
+            result: result
+        }, "Stock updated for a component.");
+    } catch (e) {
+        // TODO return error
+        logger.error(e);
+        throw err;
+    } finally {
+        return result;
+    }
+};
 
 const createTransactionDetailsTx = async (connection, options, product, transaction, cart) => {
     logger.debug("creating a new transaction details for for PO:", cart.idPO);
