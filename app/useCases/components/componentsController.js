@@ -6,9 +6,6 @@
 const { componentById, componentsSearched } = require('../../services/search/componentsSearchService');
 const errorRes = require('../../../lib/error/storeError');
 const leylaImage = require('../../../lib/util/leylaImage');
-// const config = require('config');
-// const IMG_PORT = config.get('SERVER.PORT');
-// const IMG_IP = config.get('SERVER.IP');
 
 const {
     SConst
