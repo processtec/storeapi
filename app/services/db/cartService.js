@@ -31,7 +31,9 @@ const getById = async (options) => {
 };
 
 const getAll = async (options) => {
-    logger.debug('fetching all carts for user:', options.userName);
+    logger.debug({
+        id: options.reqId
+    },"fetching all carts for user:", options.userName);
     const carts = await getCarts(options);
     /*for (let index = 0; index < carts.length; index++) {
         const cart = carts[index];
@@ -47,7 +49,9 @@ const getAll = async (options) => {
 };
 
 const getAllWithDetails = async (options) => {
-    logger.debug('fetching all carts for user:', options.userName);
+    logger.debug({
+        id: options.reqId
+    },"fetching all carts for user:", options.userName);
     let carts = await getCarts(options);
     for (let index = 0; index < carts.length; index++) {
         const cart = carts[index];
@@ -86,7 +90,9 @@ const create = async (options) => {
 };
 
 const modifyStatus = async (options) => {
-    logger.debug("updating an xisting cart with id:", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"updating an xisting cart with id:", options.cartId);
 
     let result;
     try {
@@ -181,7 +187,9 @@ const addProductToCart = async (options) => {
 };
 
 const modifyProductForCart = async (options) => {
-    logger.debug("adding a new product for cartId:", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"adding a new product for cartId:", options.cartId);
 
     let result;
     try {
@@ -291,7 +299,9 @@ const checkoutACart = async (options) => {
 };
 
 const deleteAProduct = async (options) => {
-    logger.debug("Deleting a product for cartId:", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"Deleting a product for cartId:", options.cartId);
 
     let result;
     try {
@@ -317,7 +327,9 @@ Private
 */
 
 const updateStockForCartCheckout = async (connection, options) => {
-    logger.debug("updating stock for cart checkout.");
+    logger.debug({
+        id: options.reqId
+    },"updating stock for cart checkout.");
     const newQuantity = options.availablequantity  - options.quantity;
     const availablequantity = newQuantity < 0 ? 0 :  newQuantity;
 
@@ -341,7 +353,9 @@ const updateStockForCartCheckout = async (connection, options) => {
 };
 
 const createTransactionDetailsTx = async (connection, options, product, transaction, cart) => {
-    logger.debug("creating a new transaction details for for PO:", cart.idPO);
+    logger.debug({
+        id: options.reqId
+    },"creating a new transaction details for for PO:", cart.idPO);
     let result;
     try { //TODO this one not working
         const [rows, fields] = await connection.query('INSERT INTO store.txdetails SET idtransaction = ?, idcmp = ?, idsupplier = ?, idvendor = ?, mpin = ?, barcode = ?, status = "What..", costprice = 0.00, saleprice = 0.00, idpo = ?, idoc = ?, idproduct = ?', [transaction.insertId, product.idcmp, product.idsupplier, product.idvendor, product.mpin, product.idproduct, cart.idPO, options.ocId, product.idproduct]);
@@ -358,7 +372,9 @@ const createTransactionDetailsTx = async (connection, options, product, transact
 };
 
 const createTransactionTx = async (connection, options, stock, cart) => {
-    logger.debug("creating a new transaction for PO:", options.poID);
+    logger.debug({
+        id: options.reqId
+    },"creating a new transaction for PO:", options.poID);
     let result;
     try {
         const [rows, fields] = await connection.query('INSERT INTO store.transaction SET idcmp = ?, quantity = ?, saleprice = 0.10, idpo = ?, idcustomer = "TODO", idoc = ?, salefname = ?, salelname = ?, idstock = ? ', [stock.details.idcmp, stock.quantity, cart.idPO, options.ocId, options.fName, options.lName, stock.idstock]);
@@ -377,7 +393,9 @@ const createTransactionTx = async (connection, options, stock, cart) => {
 };
 
 const markAProductSold = async (connection, options, product) => {
-    logger.debug("marking product sold:", product.idproduct);
+    logger.debug({
+        id: options.reqId
+    },"marking product sold:", product.idproduct);
 
     let result;
     try {
@@ -396,7 +414,9 @@ const markAProductSold = async (connection, options, product) => {
 };
 
 const deleteCartProductsForAUserTx = async (connection, options) => {
-    logger.debug("deleting products for userId: ", options.userId);
+    logger.debug({
+        id: options.reqId
+    },"deleting products for userId: ", options.userId);
 
     let result;
     try {
@@ -416,7 +436,9 @@ const deleteCartProductsForAUserTx = async (connection, options) => {
 };
 
 const deleteCartsForAUserTx = async (connection, options) => {
-    logger.debug("deleting carts for userId: ", options.userId);
+    logger.debug({
+        id: options.reqId
+    },"deleting carts for userId: ", options.userId);
 
     let result;
     try {
@@ -436,7 +458,9 @@ const deleteCartsForAUserTx = async (connection, options) => {
 };
 
 const deleteCartTx = async (connection, options) => {
-    logger.debug("deleting cartId: ", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"deleting cartId: ", options.cartId);
 
     let result;
     try {
@@ -455,7 +479,9 @@ const deleteCartTx = async (connection, options) => {
 };
 
 const deleteProductsInCartTx = async (connection, options) => {
-    logger.debug("deleting products for cartId: ", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"deleting products for cartId: ", options.cartId);
 
     let result;
     try {
@@ -492,7 +518,9 @@ const deleteProductsInCartTx = async (connection, options) => {
 // };
 
 const getCartById = async (options) => {
-    logger.debug('fetching cart for user:', options.userName);
+    logger.debug({
+        id: options.reqId
+    },'fetching cart for user:', options.userName);
     let result;
     try {
         const [rows, fields] = await db.execute('SELECT * FROM store.cart where idUser = ? AND idcart = ? AND status = ? LIMIT 0, 1', [options.userId, options.cartId, SConst.CART.STATUS.AVAILABLE]);
@@ -533,7 +561,9 @@ const getDetailedStocksForACart = async (options) => {
 };
 
 const getCarts = async (options) => {
-    logger.debug('fetching all carts for user:', options.userName);
+    logger.debug({
+        id: options.reqId
+    },'fetching all carts for user:', options.userName);
     let result;
     try {
         const [rows, fields] = await db.execute('SELECT * FROM store.cart where idUser = ? AND status = ?', [options.userId, SConst.CART.STATUS.AVAILABLE]);
@@ -552,7 +582,9 @@ const getCarts = async (options) => {
 };
 
 const getStocksForCartId = async (options) => {
-    logger.debug('fetching stock details for cartId:', options.idcart);
+    logger.debug({
+        id: options.reqId
+    },'fetching stock details for cartId:', options.idcart);
     let result;
     try {
         const [rows, fields] = await db.execute('SELECT * FROM store.cart_stock where idcart = ?', [options.idcart]);
@@ -571,7 +603,9 @@ const getStocksForCartId = async (options) => {
 };
 
 const getStockDetailsForId = async (options) => {
-    logger.debug('fetching stock details for stockID:', options.idStock);
+    logger.debug({
+        id: options.reqId
+    },'fetching stock details for stockID:', options.idStock);
     let result;
     try {
         const [rows, fields] = await db.execute('SELECT * FROM store.stock where idstock = ?', [options.idStock]);
@@ -590,7 +624,9 @@ const getStockDetailsForId = async (options) => {
 };
 
 const getProductsForStockId = async (options, stock, limit) => {
-    logger.debug('fetching products/items for a stockID:', stock.idstock);
+    logger.debug({
+        id: options.reqId
+    },'fetching products/items for a stockID:', stock.idstock);
     let result;
     try { //next one is failing
         const [rows, fields] = await db.execute('SELECT * FROM store.product where idstock = ? AND idcmp = ? AND status = ? AND isActive = 1 ORDER BY createdOn ASC LIMIT ? OFFSET 0', [stock.idstock, stock.details.idcmp, SConst.PRODUCT.STATUS.AVAILABLE, limit]);
@@ -609,7 +645,9 @@ const getProductsForStockId = async (options, stock, limit) => {
 };
 
 const markCartToStockInActiveTx = async (connection, options) => {
-    logger.debug("deleting products for cartId: ", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"deleting products for cartId: ", options.cartId);
 
     let result;
     try {
@@ -628,7 +666,9 @@ const markCartToStockInActiveTx = async (connection, options) => {
 };
 
 const markCartInActiveTx = async (connection, options) => {
-    logger.debug("Making cart inactive for cartId: ", options.cartId);
+    logger.debug({
+        id: options.reqId
+    },"Making cart inactive for cartId: ", options.cartId);
 
     let result;
     try {
