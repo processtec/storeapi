@@ -8,6 +8,7 @@ const { db } = require('./lib/db/mysql2'); // called to initializer DB connectio
 const search = require('./lib/search/es');
 const log = require('./lib/logger/bunyanLogger').logger('index');
 const { componentById } = require('./app/services/search/componentsSearchService');
+const worker = require('./app/useCases/workers/leylaWorkersController');
 
 
 const testWareHouse = require('./app/services/db/warehouseService'); // TODO remove me
@@ -29,6 +30,8 @@ const testSite = require('./app/services/db/sitesService');
     componentById({
         cmpId: 1234
     });
+
+    worker.productSyncWorkerStart();
 })();
 
 process.on('SIGINT', function() {

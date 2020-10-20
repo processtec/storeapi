@@ -25,7 +25,7 @@ const sellProductTx = async (options) => {
 const addProductTx = async (options) => {
 
     // TODO supplierCompany, vendorCompany --> fetch from edata3
-    const supplierCompany = "TODO";
+    const supplierCompany = options.supplier_company || "TODO";
     const vendorCompany = "TODO";
 
     const connection = await db.getConnection();
@@ -60,8 +60,11 @@ const addProductTx = async (options) => {
 
         //2. update stock with new quantity.
         if(options.status === SConst.PRODUCT.STATUS.AVAILABLE) {
-            options.lastModifiedBy = "in Future.";
+            options.lastModifiedBy = options.lastModifiedBy || "in Future.";
             const updateStockResult = await updateStockForAddingProduct(connection, options);
+        } else if(options.status === SConst.PRODUCT.STATUS.ORDERED) {
+            options.lastModifiedBy = options.lastModifiedBy || "in Future.";
+            const updateStockResult = await updateStockForOrderingProduct(connection, options);
         }
 
         await connection.commit();
@@ -97,10 +100,11 @@ const createStockIfRequired = async (connection, options) => {
 
 const addNewProduct = async (connection, options) => {
     logger.debug("adding a new product.");
+    options.PurchaseOrderCode = options.PurchaseOrderCode || "TODO";
 
     let result;
     try {
-        const [rows, fields] = await connection.query('INSERT INTO product SET idcmp = ?, idsupplier = ?, idvendor = ?, mpin = ?, status = ?, costprice = ?, idpo = ?, idstock = ?, idlocation = ?', [options.cmpId, options.idSupplier, options.idVendor, options.mpin, options.status, options.costPrice, options.idPO, options.stock.idstock, options.idLocation]);
+        const [rows, fields] = await connection.query('INSERT INTO product SET idcmp = ?, idsupplier = ?, idvendor = ?, mpin = ?, status = ?, costprice = ?, idpo = ?, idstock = ?, idlocation = ?, PurchaseOrderCode = ?', [options.cmpId, options.idSupplier, options.idVendor, options.mpin, options.status, options.costPrice, options.idPO, options.stock.idstock, options.idLocation, options.PurchaseOrderCode]);
         result = rows;
         logger.info({
             id: options.reqId,
@@ -119,13 +123,40 @@ const addNewProduct = async (connection, options) => {
 const updateStockForAddingProduct = async (connection, options) => {
     logger.debug("updating a stocked item in stocks for idcmp...");
     const availablequantity = options.stock.availablequantity > 0 ? (options.stock.availablequantity + 1) : 1;
-    const orderedquantity = options.stock.orderedquantity > 0 ? (options.stock.orderedquantity - 1) : 0;
+    // Disabeling following as we are getting it from Leyla now :-(
+    //  const orderedquantity = options.stock.orderedquantity > 0 ? (options.stock.orderedquantity - 1) : 0;
 
-    const maximumquantity = options.stock.maximumquantity < availablequantity; // TODO send an alert. Do I need a new alert table?
+    // const maximumquantity = options.stock.maximumquantity < availablequantity; // TODO send an alert. Do I need a new alert table?
 
     let result;
     try {
-        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, orderedquantity = ?, lastModifiedBy = ? where idstock = ?', [availablequantity, orderedquantity, options.lastModifiedBy, options.stock.idstock]);
+        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, lastModifiedBy = ? where idstock = ?', [availablequantity, options.lastModifiedBy, options.stock.idstock]);
+        result = rows;
+        logger.info({
+            id: options.reqId,
+            result: result
+        }, "Stock updated for a component.");
+    } catch (e) {
+        // TODO return error
+        logger.error(e);
+        throw err;
+    } finally {
+        return result;
+    }
+};
+
+const updateStockForOrderingProduct = async (connection, options) => {
+    logger.debug("updating a stocked item in stocks for idcmp...");
+    // Disabeling following as we are getting it from Leyla now :-(
+    // const availablequantity = options.stock.availablequantity > 0 ? (options.stock.availablequantity + 1) : 1;
+    // const orderedquantity = options.stock.orderedquantity > 0 ? (options.stock.orderedquantity - 1) : 0;
+    const orderedquantity = options.stock.orderedquantity > 0 ? (options.stock.orderedquantity + 1) : 1;
+
+    // const maximumquantity = options.stock.maximumquantity < availablequantity; // TODO send an alert. Do I need a new alert table?
+
+    let result;
+    try {
+        const [rows, fields] = await connection.query('UPDATE stock SET orderedquantity = ?, lastModifiedBy = ? where idstock = ?', [orderedquantity, options.lastModifiedBy, options.stock.idstock]);
         result = rows;
         logger.info({
             id: options.reqId,
