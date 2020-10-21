@@ -93,7 +93,7 @@ const getAllInventory = async () => {
   INNER JOIN [EData3_ProcessTec].[Project].[PurchaseOrderHeader] as POHeader ON POHeader.PurchaseOrderID = PODetail.PurchaseOrderID
   INNER JOIN [EData3_ProcessTec].[Cmp].[Suppliers] as Supp ON Supp.SupplierID = POHeader.SupplierID
 
-   WHERE inItems.InventoryID = ${InventoryID} AND inItems.ComponentID = 7115
+   WHERE inItems.InventoryID = ${InventoryID}
   ORDER BY PODetail.LastModifiedDate DESC`
     );
     // TODO: from above remove --> AND inItems.ComponentID = 7115, 17547
