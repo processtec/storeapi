@@ -33,18 +33,13 @@ const lastProductSyncTimeStamp = async () => {
 
 const createProductSyncTimeStamp = async (options) => {
 
-    logger.debug({
-        id: options.reqId
-    },"creating a new cart for oc:", options.ocId);
+    logger.debug("Adding a TS for sync with Leyla.");
 
     let result;
     try {
         const [rows, fields] = await db.query('INSERT INTO store.inventorySync () values ()');
         result = rows;
-        logger.info({
-            id: options.reqId,
-            result: result
-        }, "new cart created.");
+        logger.info("Synced with Leyla TS added.");
     } catch (e) {
         // TODO return custom errors.
         logger.error(e);

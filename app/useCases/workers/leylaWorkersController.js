@@ -27,17 +27,17 @@ const productSyncWorkerStart = async () => {
     const storeProductsFromLeyla = createStoreProductsFromLeylaInventory(
       leylaInventory
     );
-    for (let index = 0; index < storeProductsFromLeyla.length; index++) {
+    /*for (let index = 0; index < storeProductsFromLeyla.length; index++) {
       const product = storeProductsFromLeyla[index];
       await stockService.addProductTx(product);
-    }
-
+    }*/
+    await stockService.addProductsTx(storeProductsFromLeyla);
     // then store the timespamp in inventorySync table.
-    // await service.createProductSyncTimeStamp(); TODO enable me
+    await service.createProductSyncTimeStamp();
     return;
   }
 
-  // await runProductSyncDaemon(); //TODO enable me
+  await runProductSyncDaemon();
 };
 
 const createStoreProductsFromLeylaInventory = (leylaInventory) => {

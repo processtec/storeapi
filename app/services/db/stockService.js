@@ -75,6 +75,53 @@ const addProductTx = async (options) => {
 
     } finally {
         connection.release();
+        logger.debug({cmpId: options.cmpId}, "Added a new product.");
+    }
+};
+
+const addProductsTx = async (products) => {
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+        for (let index = 0; index < products.length; index++) {
+            const options = products[index];
+
+            try {
+                const supplierCompany = options.supplier_company || "TODO";
+                const vendorCompany = "TODO";
+                let stock = await createStockIfRequired(connection, options);
+                // 1. add new product with above idstock
+                options.stock = stock
+                await addNewProduct(connection, options);
+        
+                //2. update stock with new quantity.
+                if(options.status === SConst.PRODUCT.STATUS.AVAILABLE) {
+                    options.lastModifiedBy = options.lastModifiedBy || "in Future.";
+                    const updateStockResult = await updateStockForAddingProduct(connection, options);
+                } else if(options.status === SConst.PRODUCT.STATUS.ORDERED) {
+                    options.lastModifiedBy = options.lastModifiedBy || "in Future.";
+                    const updateStockResult = await updateStockForOrderingProduct(connection, options);
+                }
+        
+            } catch (err) {
+                // Throw the error again so others can catch it.
+                throw err;
+        
+            } finally {
+                logger.debug({cmpId: options.cmpId}, "Added a new product.");
+            }
+            
+        }
+
+        await connection.commit();
+    } catch (error) {
+        await connection.rollback();
+            // Throw the error again so others can catch it.
+        throw err;
+    } finally {
+        connection.release();
+        logger.debug({count: products.length}, "products added and commited to DB.");
     }
 };
 
@@ -389,6 +436,7 @@ const deactivateByComponent = async (id) => {
 
 module.exports = {
     addProductTx,
+    addProductsTx,
     sellProductTx,
     findOne,
     findOneByComponentId,
