@@ -37,7 +37,7 @@ const productSyncWorkerStart = async () => {
     return;
   }
 
-  await runProductSyncDaemon();
+  // await runProductSyncDaemon(); //TODO enable me
 };
 
 const createStoreProductsFromLeylaInventory = (leylaInventory) => {

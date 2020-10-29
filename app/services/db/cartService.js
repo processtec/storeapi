@@ -14,6 +14,8 @@ const {
 const {
     SConst
 } = require('../../constants/storeConstants');
+const leylaService = require('./leylaService');
+const ocService = require('../search/ocSearchService');
 
 const getById = async (options) => {
     const cart = await getCartById(options);
@@ -225,6 +227,11 @@ const checkoutACart = async (options) => {
         }
         // 2. for Each stock id, get products with limit as quantities which are avaialble.
         let detailedMessage = "";
+        const orderConfirmaion = await ocService.ocById({
+            reqID: options.reqId,
+            ocID: options.ocId
+        });
+
         for (let index = 0; index < stocks.length; index++) {
             const stock = stocks[index];
             const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
@@ -266,8 +273,34 @@ const checkoutACart = async (options) => {
               idUser: options.userId,
               idstock: stock.idstock
             });
-        }
 
+            
+            // NEW PTE sync step:
+
+        //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog, 
+        await leylaService.updateInventory({
+            availablequantity: availablequantity,
+            ComponentID: stock.details.idcmp,
+            ocId: options.ocId,
+            quantity: stock.quantity,
+            DiscountToCustomer: 0,
+            Margin: 0,
+            QuotedPrice: products[0].costprice,
+            CostType: 0,
+            Miscellaneous:  "Added from Store API for cartID: " + options.cartId,
+            ToDollarConversion: 0,
+            ItemNumber: index + 10, //increment by 10
+            Shipped: 0,
+            CurrencyTypeID: 1,
+            CurrencyConversionRate: 1,
+            SupplierID: products[0].idsupplier,
+            jobId: orderConfirmaion[0]._source.jobid
+        });
+
+        // A2. OC: [OrderConfirmationHeader] do nothing, add components in [OrderConfirmationDetail],  and nothing in OCAddendums as they can be added from PTEDATA.COM
+            // leylaService.addComponentsToOC({});
+        }
+        
         // 7. mark cart as completed
         await markCartToStockInActiveTx(connection, options);
         await markCartInActiveTx(connection, options);

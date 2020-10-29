@@ -5,49 +5,12 @@
 
 const _ = require("lodash");
 // const logger = require('../../../lib/logger/bunyanLogger').logger('');
-const { db, initialize } = require("../../../lib/db/leylaDB");
+const { sql, db, initialize } = require("../../../lib/db/leylaDB");
 const { SConst } = require("../../constants/storeConstants");
 const moment = require("moment");
+const { query } = require("express");
 
 const InventoryID = 63;
-
-const startProductSyncWorker = async (options) => {
-  await initialize(); // ensures that the pool has been created
-  // Get all inventory data from PTE Inventory.
-  const allInventory = await getAllInventory();
-  runEveryX();
-};
-
-const runEveryX = () => {
-  console.log("Scheduling timer now .....");
-  setTimeout(function () {
-    console.log("running after waiting NOW!");
-
-    callAllFuncs();
-
-    //runEveryX(); //TODO enable it.
-  }, waitTime);
-  console.log(`Timer scheduled. Will run after: ${waitTime}. ZZZZzzzzzz`);
-};
-
-const callAllFuncs = async () => {
-  const pteLatestChangeTimeStamp = await getPTEInventoryTS();
-  const componentsWithDSN = await getComponentsWithDSN({
-    lastTimeStamp: pteLatestChangeTimeStamp,
-  });
-
-  for (let index = 0; index < componentsWithDSN.length; index++) {
-    const element = componentsWithDSN[index];
-    const inventoryForAComponent = await getInventoryForAComponent({
-      ComponentID: element.ComponentID,
-    });
-    console.log(
-      "inventoryForAComponent: " + element.ComponentID + ":--> ",
-      inventoryForAComponent
-    );
-    //TODO: for each of these update product or just call add product.
-  }
-};
 
 const getAllInventory = async () => {
   try {
@@ -106,6 +69,149 @@ const getAllInventory = async () => {
     // pool1.close();
   }
 };
+
+const startProductSyncWorker = async (options) => {
+  await initialize(); // ensures that the pool has been created
+  // Get all inventory data from PTE Inventory.
+  const allInventory = await getAllInventory();
+  runEveryX();
+};
+
+const updateInventory = async (options) => {
+  //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog, 
+  // A2. OC: [OrderConfirmationHeader] do nothing, add components in [OrderConfirmationDetail],  and nothing in OCAddendums as they can be added from PTEDATA.COM
+  try {
+    /* use following after testing the individual method
+    console.log("updating inventory...");
+    const transaction = new sql.Transaction(db);
+    await new Promise(resolve => transaction.begin(resolve));
+    const request = new sql.Request(transaction)
+                    .input();
+    const result = await request.query("UPDATE [EData3_ProcessTec].[Project].[InventoryItems] SET Quantity = @quantity WHERE InventoryID = @inventoryId AND ComponentID = @componentId");                
+    await transaction.commit();
+    transaction.rollback();*/
+    // await new Promise(resolve => transaction.begin(resolve));
+    // TODO create a transaction: https://stackoverflow.com/a/49290654/824261
+    // https://medium.com/javascript-in-plain-english/querying-sql-server-in-node-js-using-async-await-5cb68acf2144
+
+    // https://www.npmjs.com/package/mssql#asyncawait
+    // Get exisiting inventory
+    const existingInventory = await getInventoryForAComponent({
+      ComponentID: options.ComponentID,
+    });
+
+    await updateInventoryItemsTx(options);
+    await updateInventoryLogTx(options);
+
+  } finally {
+    // pool1.close();
+  }
+};
+
+const updateInventoryItemsTx = async (transaction, options) => {
+try { 
+  const quantityInStock = existingInventory.QuantityInStock - options.quantity;
+    const request = db.request()
+            .input('quantity', sql.Int, quantityInStock)
+            .input('inventoryId', sql.Int, InventoryID)
+            .input('componentID', sql.Int, options.ComponentID);
+    const InventoryID = 63;
+    const result = await request.query("UPDATE [EData3_ProcessTec].[Project].[InventoryItems] SET Quantity = @quantity WHERE InventoryID = @inventoryId AND ComponentID = @componentId");
+    return result.recordset;
+  } catch (err) {
+    console.error("SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
+};
+
+const updateInventoryLogTx = async (transaction, options) => {
+  try {
+  const request = db.request()
+            .input('quantityPrior', sql.Int, quantityInStock)
+            .input('quantityAfter', sql.Int, quantityInStock)
+            .input('quantityDelta', sql.Int, quantityInStock)
+            .input('jobId', sql.Int, quantityInStock)
+            .input('inventoryActionTypeId', sql.Int, 3)
+            
+            .input('inventoryId', sql.Int, InventoryID)
+            .input('componentID', sql.Int, options.ComponentID);
+    const InventoryID = 63;
+    const result = await request.query("INSERT INTO [EData3_ProcessTec].[Project].[InventoryLog] (InventoryID, ComponentID, InventoryActionTypeID, QuantityPrior, QuantityPrior, QuantityDelta, JobID, DistributedTo, UserID, IsVoid, CurrencyExchangeRate, CurrencyTypeID) VALUES (@inventoryId, @ComponentID, 3)");
+    return result.recordset;
+  } catch (err) {
+    console.error("SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
+};
+
+
+const addComponentsToOC = async (options) => {
+  try {
+    const request = db.request()
+              .input('orderConfirmationId', sql.Int, options.ocID)
+              .input('componentId', sql.Int, options.componentId)
+              .input('quantity', sql.Int, options.quantity)
+              .input('discountToCustomer', sql.Int, 0)
+              .input('margin', sql.Int, 0)
+              .input('quotedPrice', sql.Int, 0)
+              .input('costType', sql.Int, 0)
+              .input('miscellaneous', sql.VarChar, 'Data from Store.')
+              .input('toDollarConversion', sql.Int, 0)
+              .input('itemNumber', sql.Int, 0)
+              .input('shipped', sql.Int, 0)
+              .input('currencyTypeID', sql.Int, 0)
+              .input('itemNumber', sql.Int, 0)
+              .input('currencyConversionRate', sql.Int, 0)
+              .input('supplierID', sql.Int, options.supplierId)
+      const InventoryID = 63;
+      const result = await request.query("INSERT INTO [EData3_ProcessTec].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES ()");
+      return result.recordset;
+    } catch (err) {
+      console.error("SQL error", err);
+      return null;
+    } finally {
+      // pool1.close();
+    }
+};
+
+
+// /////////////////////// PRIVATE ////////////////////////
+const runEveryX = () => {
+  console.log("Scheduling timer now .....");
+  setTimeout(function () {
+    console.log("running after waiting NOW!");
+
+    callAllFuncs();
+
+    //runEveryX(); //TODO enable it.
+  }, waitTime);
+  console.log(`Timer scheduled. Will run after: ${waitTime}. ZZZZzzzzzz`);
+};
+
+const callAllFuncs = async () => {
+  const pteLatestChangeTimeStamp = await getPTEInventoryTS();
+  const componentsWithDSN = await getComponentsWithDSN({
+    lastTimeStamp: pteLatestChangeTimeStamp,
+  });
+
+  for (let index = 0; index < componentsWithDSN.length; index++) {
+    const element = componentsWithDSN[index];
+    const inventoryForAComponent = await getInventoryForAComponent({
+      ComponentID: element.ComponentID,
+    });
+    console.log(
+      "inventoryForAComponent: " + element.ComponentID + ":--> ",
+      inventoryForAComponent
+    );
+    //TODO: for each of these update product or just call add product.
+  }
+};
+
+
 
 const getPTEInventoryTS = async () => {
   try {
@@ -169,7 +275,9 @@ const getInventoryForAComponent = async (options) => {
 module.exports = {
   startProductSyncWorker: startProductSyncWorker,
   getAllInventory: getAllInventory,
-  initialize: initialize
+  initialize: initialize,
+  updateInventory: updateInventory,
+  addComponentsToOC: addComponentsToOC
 };
 
 /*async function messageHandler() {
@@ -195,13 +303,13 @@ module.exports = {
 //  YYYY-MM-DD HH:MM:SS.
 
 // run code every 5 minutes --> https://stackoverflow.com/a/8012484/824261
-
+/*
 const initialCall = async () => {
   await initialize(); // ensures that the pool has been created
   // Get all inventory data from PTE Inventory.
   const allInventory = await getAllInventory();
   runEveryX();
-};
+};*/
 
 // run on worker thread: https://nodesource.com/blog/worker-threads-nodejs/
 // OR -> https://medium.com/@Trott/using-worker-threads-in-node-js-80494136dbb6
