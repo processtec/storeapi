@@ -11,13 +11,13 @@ const moment = require("moment");
 const { query } = require("express");
 
 const InventoryID = 63;
-
+const databaseName = 'EData3_Test';
 const getAllInventory = async () => {
   try {
     console.log("Getting all inventory...");
 
     const request = db.request(); // or: new sql.Request(pool1)
-    const InventoryID = 63;
+    // const InventoryID = 63;
 
     // const result = await request.query(`SELECT [InventoryItemID] ,[InventoryID] ,[ComponentID] ,[QuantityInStock] ,[ReorderQuantity] ,[Location] ,[Comments] ,[StockRoomLabel] ,[InstalledBaseCount] ,[StockBase] ,[EstimatedCost] ,[SupplierPartNumber] ,[SAPNumber] ,[CostCurrencyType] FROM [EData3_ProcessTec].[Project].[InventoryItems] WHERE [InventoryID] = ${InventoryID}`);
     const result = await request.query(
@@ -51,10 +51,10 @@ const getAllInventory = async () => {
       ,POHeader.PurchaseOrderCode
       ,POHeader.ProjectName
       ,Supp.CompanyName as SupplierCompany
-  FROM [EData3_ProcessTec].[Project].[InventoryItems] as inItems
-  INNER JOIN [EData3_ProcessTec].[Project].[PurchaseOrderDetail] as PODetail ON PODetail.ComponentID = inItems.ComponentID
-  INNER JOIN [EData3_ProcessTec].[Project].[PurchaseOrderHeader] as POHeader ON POHeader.PurchaseOrderID = PODetail.PurchaseOrderID
-  INNER JOIN [EData3_ProcessTec].[Cmp].[Suppliers] as Supp ON Supp.SupplierID = POHeader.SupplierID
+  FROM [${databaseName}].[Project].[InventoryItems] as inItems
+  INNER JOIN [${databaseName}].[Project].[PurchaseOrderDetail] as PODetail ON PODetail.ComponentID = inItems.ComponentID
+  INNER JOIN [${databaseName}].[Project].[PurchaseOrderHeader] as POHeader ON POHeader.PurchaseOrderID = PODetail.PurchaseOrderID
+  INNER JOIN [${databaseName}].[Cmp].[Suppliers] as Supp ON Supp.SupplierID = POHeader.SupplierID
 
    WHERE inItems.InventoryID = ${InventoryID}
   ORDER BY PODetail.LastModifiedDate DESC`
@@ -100,7 +100,7 @@ const updateInventory = async (options) => {
       ComponentID: options.ComponentID,
     });
 
-    await updateInventoryItemsTx(options);
+    await updateInventoryItemsTx(options, existingInventory);
     await updateInventoryLogTx(options);
 
   } finally {
@@ -108,15 +108,16 @@ const updateInventory = async (options) => {
   }
 };
 
-const updateInventoryItemsTx = async (transaction, options) => {
+const updateInventoryItemsTx = async (options, existingInventory) => {
 try { 
   const quantityInStock = existingInventory.QuantityInStock - options.quantity;
+  // const InventoryID = 63;
     const request = db.request()
-            .input('quantity', sql.Int, quantityInStock)
+            .input('quantityInStock', sql.Int, quantityInStock)
             .input('inventoryId', sql.Int, InventoryID)
             .input('componentID', sql.Int, options.ComponentID);
-    const InventoryID = 63;
-    const result = await request.query("UPDATE [EData3_ProcessTec].[Project].[InventoryItems] SET Quantity = @quantity WHERE InventoryID = @inventoryId AND ComponentID = @componentId");
+    
+    const result = await request.query(`UPDATE [${databaseName}].[Project].[InventoryItems] SET QuantityInStock = @quantityInStock WHERE InventoryID = @inventoryId AND ComponentID = @componentId`);
     return result.recordset;
   } catch (err) {
     console.error("SQL error", err);
@@ -137,8 +138,7 @@ const updateInventoryLogTx = async (transaction, options) => {
             
             .input('inventoryId', sql.Int, InventoryID)
             .input('componentID', sql.Int, options.ComponentID);
-    const InventoryID = 63;
-    const result = await request.query("INSERT INTO [EData3_ProcessTec].[Project].[InventoryLog] (InventoryID, ComponentID, InventoryActionTypeID, QuantityPrior, QuantityPrior, QuantityDelta, JobID, DistributedTo, UserID, IsVoid, CurrencyExchangeRate, CurrencyTypeID) VALUES (@inventoryId, @ComponentID, 3)");
+    const result = await request.query(`INSERT INTO [${databaseName}].[Project].[InventoryLog] (InventoryID, ComponentID, InventoryActionTypeID, QuantityPrior, QuantityPrior, QuantityDelta, JobID, DistributedTo, UserID, IsVoid, CurrencyExchangeRate, CurrencyTypeID) VALUES (@inventoryId, @ComponentID, 3)`);
     return result.recordset;
   } catch (err) {
     console.error("SQL error", err);
@@ -167,8 +167,7 @@ const addComponentsToOC = async (options) => {
               .input('itemNumber', sql.Int, 0)
               .input('currencyConversionRate', sql.Int, 0)
               .input('supplierID', sql.Int, options.supplierId)
-      const InventoryID = 63;
-      const result = await request.query("INSERT INTO [EData3_ProcessTec].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES ()");
+      const result = await request.query(`INSERT INTO [${databaseName}].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES ()`);
       return result.recordset;
     } catch (err) {
       console.error("SQL error", err);
@@ -218,10 +217,9 @@ const getPTEInventoryTS = async () => {
     console.log("Getting PTEInventoryTS...");
 
     const request = db.request(); // or: new sql.Request(pool1)
-    const InventoryID = 63;
 
     const result = await request.query(
-      `SELECT MAX([RecordDateTime]) as RecordDateTime FROM [EData3_ProcessTec].[Project].[InventoryLog] where [InventoryID] = ${InventoryID}`
+      `SELECT MAX([RecordDateTime]) as RecordDateTime FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID}`
     );
     console.log("PTEInventoryTS: ", result.recordset);
     return result;
@@ -237,11 +235,10 @@ const getComponentsWithDSN = async (options) => {
     console.log("Getting ComponentsWithDSN...");
 
     const request = db.request(); // or: new sql.Request(pool1)
-    const InventoryID = 63;
     const lastTimeStamp = options.lastTimeStamp || "2020-10-04 01:12:33.807"; //TODO use me
 
     const result = await request.query(
-      `SELECT DISTINCT [ComponentID] ,MAX([RecordDSN]) as RecordDSN FROM [EData3_ProcessTec].[Project].[InventoryLog] where [InventoryID] = ${InventoryID} AND [RecordDateTime] > '2020-10-04 01:12:33.807'  group by [ComponentID]`
+      `SELECT DISTINCT [ComponentID] ,MAX([RecordDSN]) as RecordDSN FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID} AND [RecordDateTime] > '2020-10-04 01:12:33.807'  group by [ComponentID]`
     );
     console.log("All ComponentsWithDSN: ", result.recordset);
     return result.recordset;
@@ -257,11 +254,10 @@ const getInventoryForAComponent = async (options) => {
     console.log("Getting for a InventoryForAComponent: " + options.ComponentID);
 
     const request = db.request(); // or: new sql.Request(pool1)
-    const InventoryID = 63;
     const lastTimeStamp = "2020-10-04 01:12:33.807";
 
     const result = await request.query(
-      `SELECT [InventoryItemID] ,[InventoryID] ,[ComponentID] ,[QuantityInStock] ,[ReorderQuantity] ,[Location] ,[Comments] ,[StockRoomLabel] ,[InstalledBaseCount] ,[StockBase] ,[EstimatedCost] ,[SupplierPartNumber] ,[SAPNumber] ,[CostCurrencyType] FROM [EData3_ProcessTec].[Project].[InventoryItems] WHERE [InventoryID] = ${InventoryID} AND [ComponentID] = ${options.ComponentID}`
+      `SELECT [InventoryItemID] ,[InventoryID] ,[ComponentID] ,[QuantityInStock] ,[ReorderQuantity] ,[Location] ,[Comments] ,[StockRoomLabel] ,[InstalledBaseCount] ,[StockBase] ,[EstimatedCost] ,[SupplierPartNumber] ,[SAPNumber] ,[CostCurrencyType] FROM [${databaseName}].[Project].[InventoryItems] WHERE [InventoryID] = ${InventoryID} AND [ComponentID] = ${options.ComponentID}`
     );
     console.log("InventoryForAComponent: ", result.recordset[0]);
     return result.recordset[0];
