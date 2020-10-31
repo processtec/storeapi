@@ -11,7 +11,7 @@ const moment = require("moment");
 const { query } = require("express");
 
 const InventoryID = 63;
-const databaseName = 'EData3_Test';
+const databaseName = "EData3_Test";
 const getAllInventory = async () => {
   try {
     console.log("Getting all inventory...");
@@ -78,7 +78,7 @@ const startProductSyncWorker = async (options) => {
 };
 
 const updateInventory = async (options) => {
-  //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog, 
+  //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
   // A2. OC: [OrderConfirmationHeader] do nothing, add components in [OrderConfirmationDetail],  and nothing in OCAddendums as they can be added from PTEDATA.COM
   try {
     /* use following after testing the individual method
@@ -101,82 +101,98 @@ const updateInventory = async (options) => {
     });
 
     await updateInventoryItemsTx(options, existingInventory);
-    await updateInventoryLogTx(options);
-
+    await updateInventoryLogTx(options, existingInventory);
+    await addComponentsToOC(options);
   } finally {
     // pool1.close();
   }
 };
 
 const updateInventoryItemsTx = async (options, existingInventory) => {
-try { 
-  const quantityInStock = existingInventory.QuantityInStock - options.quantity;
-  // const InventoryID = 63;
-    const request = db.request()
-            .input('quantityInStock', sql.Int, quantityInStock)
-            .input('inventoryId', sql.Int, InventoryID)
-            .input('componentID', sql.Int, options.ComponentID);
-    
-    const result = await request.query(`UPDATE [${databaseName}].[Project].[InventoryItems] SET QuantityInStock = @quantityInStock WHERE InventoryID = @inventoryId AND ComponentID = @componentId`);
-    return result.recordset;
-  } catch (err) {
-    console.error("SQL error", err);
-    return null;
-  } finally {
-    // pool1.close();
-  }
-};
-
-const updateInventoryLogTx = async (transaction, options) => {
   try {
-  const request = db.request()
-            .input('quantityPrior', sql.Int, quantityInStock)
-            .input('quantityAfter', sql.Int, quantityInStock)
-            .input('quantityDelta', sql.Int, quantityInStock)
-            .input('jobId', sql.Int, quantityInStock)
-            .input('inventoryActionTypeId', sql.Int, 3)
-            
-            .input('inventoryId', sql.Int, InventoryID)
-            .input('componentID', sql.Int, options.ComponentID);
-    const result = await request.query(`INSERT INTO [${databaseName}].[Project].[InventoryLog] (InventoryID, ComponentID, InventoryActionTypeID, QuantityPrior, QuantityPrior, QuantityDelta, JobID, DistributedTo, UserID, IsVoid, CurrencyExchangeRate, CurrencyTypeID) VALUES (@inventoryId, @ComponentID, 3)`);
+    const quantityInStock =
+      existingInventory.QuantityInStock - options.quantity;
+    // const InventoryID = 63;
+    const request = db
+      .request()
+      .input("quantityInStock", sql.Int, quantityInStock)
+      .input("inventoryId", sql.Int, InventoryID)
+      .input("componentID", sql.Int, options.ComponentID);
+
+    const result = await request.query(
+      `UPDATE [${databaseName}].[Project].[InventoryItems] SET QuantityInStock = @quantityInStock WHERE InventoryID = @inventoryId AND ComponentID = @componentId`
+    );
     return result.recordset;
   } catch (err) {
-    console.error("SQL error", err);
+    console.error("updateInventoryItemsTx SQL error", err);
     return null;
   } finally {
     // pool1.close();
   }
 };
 
+const updateInventoryLogTx = async (options, existingInventory) => {
+  try {
+    const quantityInStock =
+      existingInventory.QuantityInStock - options.quantity;
+    const request = db
+      .request()
+      .input("quantityPrior", sql.Int, existingInventory.QuantityInStock)
+      .input("quantityAfter", sql.Int, quantityInStock)
+      .input("quantityDelta", sql.Int, options.quantity)
+      .input("jobId", sql.Int, options.jobId)
+      .input("inventoryActionTypeId", sql.Int, 3)
+      .input("distributedTo", sql.VarChar, "Ricky Solis")
+      .input("userID", sql.VarChar, "rickysolis")
+      .input("isVoid", sql.Int, 0)
+      .input("currencyExchangeRate", sql.Int, options.CurrencyConversionRate)
+      .input("currencyTypeID", sql.Int, options.CurrencyTypeID)
+      
+      
+
+      .input("inventoryId", sql.Int, InventoryID)
+      .input("componentID", sql.Int, options.ComponentID);
+    const result = await request.query(
+      `INSERT INTO [${databaseName}].[Project].[InventoryLog] (InventoryID, ComponentID, InventoryActionTypeID, QuantityPrior, QuantityAfter, QuantityDelta, JobID, DistributedTo, UserID, IsVoid, CurrencyExchangeRate, CurrencyTypeID) VALUES (@inventoryId, @ComponentID, 3, @quantityPrior, @quantityAfter, @quantityDelta, @jobId, @distributedTo, @userID, @isVoid, @currencyExchangeRate, @currencyTypeID)`
+    );
+    return result.recordset;
+  } catch (err) {
+    console.error("updateInventoryLogTx SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
+};
 
 const addComponentsToOC = async (options) => {
   try {
-    const request = db.request()
-              .input('orderConfirmationId', sql.Int, options.ocID)
-              .input('componentId', sql.Int, options.componentId)
-              .input('quantity', sql.Int, options.quantity)
-              .input('discountToCustomer', sql.Int, 0)
-              .input('margin', sql.Int, 0)
-              .input('quotedPrice', sql.Int, 0)
-              .input('costType', sql.Int, 0)
-              .input('miscellaneous', sql.VarChar, 'Data from Store.')
-              .input('toDollarConversion', sql.Int, 0)
-              .input('itemNumber', sql.Int, 0)
-              .input('shipped', sql.Int, 0)
-              .input('currencyTypeID', sql.Int, 0)
-              .input('itemNumber', sql.Int, 0)
-              .input('currencyConversionRate', sql.Int, 0)
-              .input('supplierID', sql.Int, options.supplierId)
-      const result = await request.query(`INSERT INTO [${databaseName}].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES ()`);
-      return result.recordset;
-    } catch (err) {
-      console.error("SQL error", err);
-      return null;
-    } finally {
-      // pool1.close();
-    }
+    const request = db
+      .request()
+      .input("orderConfirmationId", sql.Int, options.ocId)
+      .input("componentId", sql.Int, options.ComponentID)
+      .input("quantity", sql.Int, options.quantity)
+      .input("discountToCustomer", sql.Int, options.DiscountToCustomer)
+      .input("margin", sql.Int, options.Margin)
+      .input("quotedPrice", sql.Int, options.QuotedPrice)
+      .input("costType", sql.Int, options.CostType)
+      .input("miscellaneous", sql.VarChar, "Data from Store.")
+      .input("toDollarConversion", sql.Int, options.ToDollarConversion)
+      .input("itemNumber", sql.Int, options.ItemNumber)
+      .input("shipped", sql.Int, options.Shipped)
+      .input("currencyTypeID", sql.Int, options.CurrencyTypeID)
+      .input("currencyConversionRate", sql.Int, options.CurrencyConversionRate)
+      .input("supplierID", sql.Int, options.SupplierID);
+    const result = await request.query(
+      `INSERT INTO [${databaseName}].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES (@orderConfirmationID, @componentID, @quantity, @discountToCustomer ,@margin, @quotedPrice, @costType, @miscellaneous, @toDollarConversion, @itemNumber, @shipped, @currencyTypeID, @currencyConversionRate, @supplierID)`
+    );
+    return result.recordset;
+  } catch (err) {
+    console.error("addComponentsToOC: SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
 };
-
 
 // /////////////////////// PRIVATE ////////////////////////
 const runEveryX = () => {
@@ -209,8 +225,6 @@ const callAllFuncs = async () => {
     //TODO: for each of these update product or just call add product.
   }
 };
-
-
 
 const getPTEInventoryTS = async () => {
   try {
@@ -273,7 +287,7 @@ module.exports = {
   getAllInventory: getAllInventory,
   initialize: initialize,
   updateInventory: updateInventory,
-  addComponentsToOC: addComponentsToOC
+  addComponentsToOC: addComponentsToOC,
 };
 
 /*async function messageHandler() {

@@ -276,7 +276,7 @@ const checkoutACart = async (options) => {
 
             
             // NEW PTE sync step:
-
+            // TODO ideally controller should do that instead of service calling a service or better if Manager does that.
         //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog, 
         await leylaService.updateInventory({
             availablequantity: availablequantity,
