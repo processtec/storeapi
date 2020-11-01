@@ -11,7 +11,7 @@ const moment = require("moment");
 const { query } = require("express");
 
 const InventoryID = 63;
-const databaseName = "EData3_Test";
+const databaseName = "EData3_ProcessTec"; // EData3_ProcessTec , EData3_Test
 const getAllInventory = async () => {
   try {
     console.log("Getting all inventory...");
@@ -175,7 +175,7 @@ const addComponentsToOC = async (options) => {
       .input("margin", sql.Int, options.Margin)
       .input("quotedPrice", sql.Int, options.QuotedPrice)
       .input("costType", sql.Int, options.CostType)
-      .input("miscellaneous", sql.VarChar, "Data from Store.")
+      .input("miscellaneous", sql.VarChar, options.Miscellaneous)
       .input("toDollarConversion", sql.Int, options.ToDollarConversion)
       .input("itemNumber", sql.Int, options.ItemNumber)
       .input("shipped", sql.Int, options.Shipped)
