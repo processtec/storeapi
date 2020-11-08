@@ -298,7 +298,7 @@ const getPTEInventoryTS = async () => {
       `SELECT TOP(1) RecordDSN, RecordDateTime FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID} ORDER BY RecordDSN DESC`
     );
     console.log("PTEInventoryTS: ", result.recordset);
-    return result;
+    return result.recordset[0];
   } catch (err) {
     console.error("SQL error", err);
   } finally {
