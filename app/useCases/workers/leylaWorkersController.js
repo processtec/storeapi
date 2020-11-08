@@ -11,9 +11,10 @@ const stockService = require("../../services/db/stockService");
 const errorRes = require("../../../lib/error/storeError");
 const { SConst } = require("../../constants/storeConstants");
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
-const waitTime = 5 * 60 * 1000; // 5 seconds, //5 * 60 * 1000; <<-- 5 minutes
+const waitTime = 1 * 5 * 1000; // 5 seconds, //5 * 60 * 1000; <<-- 5 minutes
 const defaultLocationId = 4;
 const defaultLastModifiedBy = "pmann";
+let pteInventorySyncInterval;
 
 const productSyncWorkerStart = async () => {
   await leylaService.initialize();
@@ -35,9 +36,9 @@ const productSyncWorkerStart = async () => {
 
     // then store the timespamp and recordDSN in inventorySync table.
     await addToProductSync();
-  } else {
-    await runProductSyncDaemon();
   }
+
+  await runProductSyncDaemon();
 };
 
 const createStoreProductsFromLeylaInventory = (leylaInventory) => {
@@ -119,11 +120,9 @@ const createPTEToStoreProductMapping = (options) => {
 
 const runProductSyncDaemon = async () => {
   console.log("Scheduling timer now for PTE inventory sync.....");
-  setTimeout(function () {
+  pteInventorySyncInterval = setInterval(function () {
     console.log("running PTE inventory sync after waiting NOW!");
     syncPTEInventory();
-
-    //runProductSyncDaemon(); //TODO enable it.
   }, waitTime);
   console.log(
     `Timer scheduled for PTE inventory sync. Will run after: ${waitTime}. ZZZZzzzzzz`
@@ -201,6 +200,7 @@ const syncPTEInventory = async () => {
       `Added ComponentID: ${pendingComponent.ComponentID} ###########################################\n\n`
     );
   }
+  console.log('Just completed a sync cycle. Adding a timestamp for it.');
   // then store the timespamp in inventorySync table.
   await addToProductSync();
 };
