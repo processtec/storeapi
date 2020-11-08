@@ -70,12 +70,71 @@ const getAllInventory = async () => {
   }
 };
 
+const getInventoryDetailsForAComponent = async (options) => {
+  try {
+    console.log("Getting getInventoryDetailsForAComponent for cmpID: " + options.ComponentID);
+
+    const request = db.request(); // or: new sql.Request(pool1)
+    // const InventoryID = 63;
+
+    // const result = await request.query(`SELECT [InventoryItemID] ,[InventoryID] ,[ComponentID] ,[QuantityInStock] ,[ReorderQuantity] ,[Location] ,[Comments] ,[StockRoomLabel] ,[InstalledBaseCount] ,[StockBase] ,[EstimatedCost] ,[SupplierPartNumber] ,[SAPNumber] ,[CostCurrencyType] FROM [EData3_ProcessTec].[Project].[InventoryItems] WHERE [InventoryID] = ${InventoryID}`);
+    const result = await request.query(
+      `SELECT DISTINCT inItems.ComponentID
+      ,inItems.InventoryItemID
+      ,inItems.InventoryID
+      ,inItems.QuantityInStock
+      ,inItems.ReorderQuantity
+      ,inItems.Location
+      ,inItems.Comments
+      ,inItems.StockRoomLabel
+      ,inItems.InstalledBaseCount
+      ,inItems.StockBase
+      ,inItems.EstimatedCost
+      ,inItems.SupplierPartNumber
+      ,inItems.SAPNumber
+      ,inItems.CostCurrencyType
+      ,PODetail.PurchaseOrderDetailID
+      ,PODetail.PurchaseOrderID
+      ,PODetail.QuantityOrdered
+      ,PODetail.QuantityReceived
+      ,PODetail.UnitPrice
+      ,PODetail.LastModifiedDate
+      ,PODetail.Miscellaneous
+      ,PODetail.DiscountPercent
+      ,PODetail.ItemNumber
+      ,POHeader.ProjectSiteID
+      ,POHeader.JobID
+      ,POHeader.SupplierID
+      ,POHeader.CostTypeID
+      ,POHeader.PurchaseOrderCode
+      ,POHeader.ProjectName
+      ,Supp.CompanyName as SupplierCompany
+  FROM [${databaseName}].[Project].[InventoryItems] as inItems
+  INNER JOIN [${databaseName}].[Project].[PurchaseOrderDetail] as PODetail ON PODetail.ComponentID = inItems.ComponentID
+  INNER JOIN [${databaseName}].[Project].[PurchaseOrderHeader] as POHeader ON POHeader.PurchaseOrderID = PODetail.PurchaseOrderID
+  INNER JOIN [${databaseName}].[Cmp].[Suppliers] as Supp ON Supp.SupplierID = POHeader.SupplierID
+
+   WHERE inItems.InventoryID = ${InventoryID} AND inItems.ComponentID = ${options.ComponentID}
+  ORDER BY PODetail.LastModifiedDate DESC`
+    );
+    // TODO: from above remove --> AND inItems.ComponentID = 7115, 17547
+    // console.log("All inventory: ", result.recordset);
+    return result.recordset;
+  } catch (err) {
+    console.error("SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
+};
+
+/*
 const startProductSyncWorker = async (options) => {
   await initialize(); // ensures that the pool has been created
   // Get all inventory data from PTE Inventory.
   const allInventory = await getAllInventory();
   runEveryX();
-};
+};*/
 
 const updateInventory = async (options) => {
   //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
@@ -195,7 +254,7 @@ const addComponentsToOC = async (options) => {
 };
 
 // /////////////////////// PRIVATE ////////////////////////
-const runEveryX = () => {
+/*const runEveryX = () => {
   console.log("Scheduling timer now .....");
   setTimeout(function () {
     console.log("running after waiting NOW!");
@@ -205,9 +264,9 @@ const runEveryX = () => {
     //runEveryX(); //TODO enable it.
   }, waitTime);
   console.log(`Timer scheduled. Will run after: ${waitTime}. ZZZZzzzzzz`);
-};
+};*/
 
-const callAllFuncs = async () => {
+/*const callAllFuncs = async () => {
   const pteLatestChangeTimeStamp = await getPTEInventoryTS();
   const componentsWithDSN = await getComponentsWithDSN({
     lastTimeStamp: pteLatestChangeTimeStamp,
@@ -224,7 +283,7 @@ const callAllFuncs = async () => {
     );
     //TODO: for each of these update product or just call add product.
   }
-};
+};*/
 
 const getPTEInventoryTS = async () => {
   try {
@@ -232,8 +291,11 @@ const getPTEInventoryTS = async () => {
 
     const request = db.request(); // or: new sql.Request(pool1)
 
+    // const result = await request.query(
+    //   `SELECT MAX([RecordDateTime]) as RecordDateTime FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID}`
+    // );
     const result = await request.query(
-      `SELECT MAX([RecordDateTime]) as RecordDateTime FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID}`
+      `SELECT TOP(1) RecordDSN, RecordDateTime FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID} ORDER BY RecordDSN DESC`
     );
     console.log("PTEInventoryTS: ", result.recordset);
     return result;
@@ -249,10 +311,11 @@ const getComponentsWithDSN = async (options) => {
     console.log("Getting ComponentsWithDSN...");
 
     const request = db.request(); // or: new sql.Request(pool1)
-    const lastTimeStamp = options.lastTimeStamp || "2020-10-04 01:12:33.807"; //TODO use me
+    // const lastTimeStamp = options.RecordDateTime || "2020-10-04 01:12:33.807"; 
+    const lastRecordDSN = options.recordDSN || 1000; //TODO use me
 
     const result = await request.query(
-      `SELECT DISTINCT [ComponentID] ,MAX([RecordDSN]) as RecordDSN FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID} AND [RecordDateTime] > '2020-10-04 01:12:33.807'  group by [ComponentID]`
+      `SELECT DISTINCT [ComponentID] ,MAX([RecordDSN]) as RecordDSN FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID} AND [RecordDSN] > ${lastRecordDSN}  group by [ComponentID]`
     );
     console.log("All ComponentsWithDSN: ", result.recordset);
     return result.recordset;
@@ -265,15 +328,14 @@ const getComponentsWithDSN = async (options) => {
 
 const getInventoryForAComponent = async (options) => {
   try {
-    console.log("Getting for a InventoryForAComponent: " + options.ComponentID);
+    console.log("Getting PTE inventory for a InventoryForAComponent: " + options.ComponentID);
 
     const request = db.request(); // or: new sql.Request(pool1)
-    const lastTimeStamp = "2020-10-04 01:12:33.807";
 
     const result = await request.query(
       `SELECT [InventoryItemID] ,[InventoryID] ,[ComponentID] ,[QuantityInStock] ,[ReorderQuantity] ,[Location] ,[Comments] ,[StockRoomLabel] ,[InstalledBaseCount] ,[StockBase] ,[EstimatedCost] ,[SupplierPartNumber] ,[SAPNumber] ,[CostCurrencyType] FROM [${databaseName}].[Project].[InventoryItems] WHERE [InventoryID] = ${InventoryID} AND [ComponentID] = ${options.ComponentID}`
     );
-    console.log("InventoryForAComponent: ", result.recordset[0]);
+    console.log("InventoryForAComponent PTE: ", result.recordset[0]);
     return result.recordset[0];
   } catch (err) {
     console.error("SQL error", err);
@@ -283,11 +345,15 @@ const getInventoryForAComponent = async (options) => {
 };
 
 module.exports = {
-  startProductSyncWorker: startProductSyncWorker,
+  // startProductSyncWorker: startProductSyncWorker,
   getAllInventory: getAllInventory,
+  getInventoryDetailsForAComponent: getInventoryDetailsForAComponent,
   initialize: initialize,
   updateInventory: updateInventory,
   addComponentsToOC: addComponentsToOC,
+  getPTEInventoryTS: getPTEInventoryTS,
+  getComponentsWithDSN: getComponentsWithDSN,
+  getInventoryForAComponent: getInventoryForAComponent
 };
 
 /*async function messageHandler() {

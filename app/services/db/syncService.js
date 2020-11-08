@@ -37,7 +37,7 @@ const createProductSyncTimeStamp = async (options) => {
 
     let result;
     try {
-        const [rows, fields] = await db.query('INSERT INTO store.inventorySync () values ()');
+        const [rows, fields] = await db.query('INSERT INTO store.inventorySync (recordDSN) values (?)', [options.recordDSN]);
         result = rows;
         logger.info("Synced with Leyla TS added.");
     } catch (e) {
