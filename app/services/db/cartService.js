@@ -459,24 +459,24 @@ const deleteProductsAfterSyncWithPTE = async (options, type) => {
     if (type == SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED) {
       const availableQuantity = options.newAvailableQuantity * -1;
       // find products which are available in store
-      const products = getAvailableProductsForComponentId(options, availableQuantity);
+      const products = await getAvailableProductsForComponentId(options, availableQuantity);
       for (let index = 0; index < products.length; index++) {
         // mark it PTE available deleted   
         await markAProductPTEAvailableDeleted(connection, options, products[index]);
-        detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${product.idproduct}\n`;
+        detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${products[index].idproduct}\n`;
       }
 
-      await updateStockForPTEAvailableDeleted(options);
+      await updateStockForPTEAvailableDeleted(connection, options);
     } else if (type == SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED) {
       const reorderQuantity = options.newReorderQuantity * -1;
-      const products = getOrderedProductsForComponentId(options, reorderQuantity);
+      const products = await getOrderedProductsForComponentId(options, reorderQuantity);
       for (let index = 0; index < products.length; index++) {
         // mark it PTE ordered deleted
         await markAProductPTEOrderedDeleted(connection, options, products[index]);
-        detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${product.idproduct}\n`;
+        detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${products[index].idproduct}\n`;
       }
 
-      await updateStockForPTEOrderedDeleted(options);
+      await updateStockForPTEOrderedDeleted(connection, options);
     }
     
 
@@ -1173,8 +1173,7 @@ const getAvailableProductsForComponentId = async (options, limit) => {
   logger.debug(
     {
       id: options.reqId,
-      type: type,
-      ComponentID: ComponentID
+      ComponentID: options.ComponentID
     },
     "Fetching available products..."
   );
@@ -1196,8 +1195,7 @@ const getAvailableProductsForComponentId = async (options, limit) => {
     logger.debug(
       {
         id: options.reqId,
-        type: type,
-        ComponentID: ComponentID
+        ComponentID: options.ComponentID
       },
       "Fetched available products."
     );
@@ -1214,8 +1212,7 @@ const getOrderedProductsForComponentId = async (options, limit) => {
   logger.debug(
     {
       id: options.reqId,
-      type: type,
-      ComponentID: ComponentID
+      ComponentID: options.ComponentID
     },
     "Fetching ordered products..."
   );
@@ -1237,8 +1234,7 @@ const getOrderedProductsForComponentId = async (options, limit) => {
     logger.debug(
       {
         id: options.reqId,
-        type: type,
-        ComponentID: ComponentID
+        ComponentID: options.ComponentID
       },
       "Fetched ordered products."
     );

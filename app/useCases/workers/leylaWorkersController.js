@@ -251,8 +251,8 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     }
   } else if (options.newAvailableQuantity < 0) {
     await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED);
-    console.error(
-      "quantity we have to update stock quantity and mark products as deleted (some new PTE state)"
+    console.log(
+      `Deleted ${options.newAvailableQuantity} available products from store products :-(.`
     );
   }
 
@@ -266,8 +266,8 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     }
   } else if (options.newReorderQuantity < 0) {
     await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED);
-    console.error(
-      "//reordered we have to update stock quantity and mark reordered as deleted (some new PTE state)"
+    console.log(
+      `Deleted ${options.newAvailableQuantity} reordered products from store products this could be they are available now.`
     );
   }
   return storeProducts;
