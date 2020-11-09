@@ -10,6 +10,7 @@ const service = require("../../services/db/syncService");
 const stockService = require("../../services/db/stockService");
 const errorRes = require("../../../lib/error/storeError");
 const { SConst } = require("../../constants/storeConstants");
+const cartService = require("../../services/db/cartService");
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
 // 5 minutes: 5 * 60 * 1000;
 // 5 seconds: 1 * 5 * 1000;
@@ -194,6 +195,7 @@ const syncPTEInventory = async () => {
         ComponentID: pendingComponent.ComponentID,
         newAvailableQuantity: newAvailableQuantityToBeUpdated,
         newReorderQuantity: newReorderQuantityToBeUpdated,
+        stock: stocks[0]
       }
     );
 
@@ -214,6 +216,9 @@ const syncPTEInventory = async () => {
 };
 
 const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
+  options.reqId = "syncworker";
+  options.userName = "pmann";
+  options.userId = 100000;
   let storeProducts = [];
 
   if (options.newAvailableQuantity == 0 && options.newReorderQuantity == 0) {
@@ -245,9 +250,9 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
       storeProducts.push(product);
     }
   } else if (options.newAvailableQuantity < 0) {
-    //TODO: we have to update stock quantity and mark products as deleted (some new PTE state)
+    await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED);
     console.error(
-      "TODO:quantity we have to update stock quantity and mark products as deleted (some new PTE state)"
+      "quantity we have to update stock quantity and mark products as deleted (some new PTE state)"
     );
   }
 
@@ -260,9 +265,9 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
       storeProducts.push(product);
     }
   } else if (options.newReorderQuantity < 0) {
-    //TODO: we have to update stock quantity and mark reordered as deleted (some new PTE state)
+    await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED);
     console.error(
-      "//TODO:reordered  we have to update stock quantity and mark reordered as deleted (some new PTE state)"
+      "//reordered we have to update stock quantity and mark reordered as deleted (some new PTE state)"
     );
   }
   return storeProducts;

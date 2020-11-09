@@ -12,7 +12,9 @@ const storeConst = {
             TEST_EQUIPMENT: 4,// existing
             MAINTENANCE: 5,// existing
             TRIALS: 6,// existing
-            UNKNOWN: 7// existing
+            UNKNOWN: 7,// existing
+            PTE_AVAILABLE_DELETED: 8, // DELETED FROM PTE
+            PTE_ORDERED_DELETED: 9 // DELETED FROM PTE
         }
     },
     
@@ -56,7 +58,8 @@ const storeConst = {
             USER_ROLE: 13,
 
             ERROR_ANY: 25,
-            ERROR_THRESHOLD: 26,
+            ERROR_PTE_DELETE: 26,
+            ERROR_THRESHOLD: 27,
         }
     },
 

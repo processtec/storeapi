@@ -10,6 +10,7 @@ const alertService = require("./alertService");
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
 const { db } = require("../../../lib/db/mysql2");
 const { SConst } = require("../../constants/storeConstants");
+const stockService = require("./stockService");
 const leylaService = require("./leylaService");
 const ocService = require("../search/ocSearchService");
 
@@ -288,7 +289,7 @@ const checkoutACart = async (options) => {
       throw new Error("nothing much in cart to checkout!");
     }
     // 2. for Each stock id, get products with limit as quantities which are avaialble.
-    let detailedMessage = "";
+    let detailedMessage = ""; // message for alert service
     const orderConfirmaion = await ocService.ocById({
       reqID: options.reqId,
       ocID: options.ocId,
@@ -440,6 +441,64 @@ const deleteAProduct = async (options) => {
   }
 };
 
+const deleteProductsAfterSyncWithPTE = async (options, type) => {
+  // its a Tx
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+  logger.debug(
+    {
+      id: options.reqId,
+      type: type,
+      ComponentID: options.ComponentID
+    },
+    "Deleting products as someone deleted in PTE inventory directly."
+  );
+  let detailedMessage = ""; // message for alert service
+
+  try {
+    if (type == SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED) {
+      const availableQuantity = options.newAvailableQuantity * -1;
+      // find products which are available in store
+      const products = getAvailableProductsForComponentId(options, availableQuantity);
+      for (let index = 0; index < products.length; index++) {
+        // mark it PTE available deleted   
+        await markAProductPTEAvailableDeleted(connection, options, products[index]);
+        detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${product.idproduct}\n`;
+      }
+
+      await updateStockForPTEAvailableDeleted(options);
+    } else if (type == SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED) {
+      const reorderQuantity = options.newReorderQuantity * -1;
+      const products = getOrderedProductsForComponentId(options, reorderQuantity);
+      for (let index = 0; index < products.length; index++) {
+        // mark it PTE ordered deleted
+        await markAProductPTEOrderedDeleted(connection, options, products[index]);
+        detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${product.idproduct}\n`;
+      }
+
+      await updateStockForPTEOrderedDeleted(options);
+    }
+    
+
+    const message = `${options.userName} deleted products in store database during a sync!`;
+    alertService.create({
+      type: SConst.ALERT.TYPE.ERROR_PTE_DELETE,
+      idUser: options.userId,
+      userName: options.userName,
+      message: message,
+      description: `${message}. \n ${detailedMessage}`
+    });
+
+    await connection.commit();
+  } catch (e) {
+    await connection.rollback();
+    // TODO return custom errors.
+    logger.error(e);
+  } finally {
+    connection.release();
+  }
+};
+
 /**
 Private
 */
@@ -472,6 +531,90 @@ const updateStockForCartCheckout = async (connection, options) => {
         result: result,
       },
       "Stock updated for a component."
+    );
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw err;
+  } finally {
+    return result;
+  }
+};
+
+const updateStockForPTEAvailableDeleted = async (connection, options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      options: options
+    },
+    "Updating stock available quantity."
+  );
+  const newQuantity = options.stock.availablequantity + options.newAvailableQuantity; // newAvailableQuantity is -VE
+  const availablequantity = newQuantity < 0 ? 0 : newQuantity;
+  logger.debug(
+    {
+      availablequantity: availablequantity
+    },
+    "Updating stock availablequantity"
+  );
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE stock SET availablequantity = ?, lastModifiedBy = ? where idstock = ?",
+      [availablequantity, options.idUser, options.stock.idstock]
+    );
+    result = rows;
+    logger.debug(
+      {
+        id: options.reqId,
+        options: options
+      },
+      "Updated stock available quantity."
+    );
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw err;
+  } finally {
+    return result;
+  }
+};
+
+const updateStockForPTEOrderedDeleted = async (connection, options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      options: options
+    },
+    "Updating stock ordered quantity."
+  );
+  const newQuantity = options.stock.orderedquantity + options.newReorderQuantity; // newReorderQuantity is -VE
+  const orderedquantity = newQuantity < 0 ? 0 : newQuantity;
+  logger.debug(
+    {
+      orderedquantity: orderedquantity
+    },
+    "Updating stock ordered quantity"
+  );
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE stock SET orderedquantity = ?, lastModifiedBy = ? where idstock = ?",
+      [orderedquantity, options.idUser, options.stock.idstock]
+    );
+    result = rows;
+    logger.debug(
+      {
+        id: options.reqId,
+        options: options
+      },
+      "Updated stock ordered quantity."
     );
   } catch (e) {
     // TODO return error
@@ -598,6 +741,74 @@ const markAProductSold = async (connection, options, product) => {
         result: result,
       },
       "product marked sold."
+    );
+    return result;
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    throw e;
+  }
+};
+
+const markAProductPTEAvailableDeleted = async (connection, options, product) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      product: product
+    },
+    "Marking an available product as PTE deleted."
+  );
+
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE store.product SET status = ?, lastModifiedBy = ?, isActive = 0 WHERE idproduct = ?",
+      [SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED, options.userName, product.idproduct]
+    );
+    result = rows;
+    logger.debug(
+      {
+        id: options.reqId,
+        product: product
+      },
+      "Marked an available product as PTE deleted."
+    );
+    return result;
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    throw e;
+  }
+};
+
+const markAProductPTEOrderedDeleted = async (connection, options, product) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      product: product
+    },
+    "Marking an ordered product as PTE deleted."
+  );
+
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE store.product SET status = ?, lastModifiedBy = ?, isActive = 0 WHERE idproduct = ?",
+      [SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED, options.userName, product.idproduct]
+    );
+    result = rows;
+    logger.debug(
+      {
+        id: options.reqId,
+        product: product
+      },
+      "Marked an ordered product as PTE deleted."
     );
     return result;
   } catch (e) {
@@ -958,6 +1169,88 @@ const getProductsForStockId = async (options, stock, limit) => {
   }
 };
 
+const getAvailableProductsForComponentId = async (options, limit) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      type: type,
+      ComponentID: ComponentID
+    },
+    "Fetching available products..."
+  );
+  let result;
+  try {
+    //next one is failing
+    const [
+      rows,
+      fields,
+    ] = await db.execute(
+      "SELECT * FROM store.product where idcmp = ? AND status = ? AND isActive = 1 ORDER BY createdOn ASC LIMIT ? OFFSET 0",
+      [
+        options.ComponentID,
+        SConst.PRODUCT.STATUS.AVAILABLE,
+        limit,
+      ]
+    );
+    result = rows;
+    logger.debug(
+      {
+        id: options.reqId,
+        type: type,
+        ComponentID: ComponentID
+      },
+      "Fetched available products."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
+const getOrderedProductsForComponentId = async (options, limit) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      type: type,
+      ComponentID: ComponentID
+    },
+    "Fetching ordered products..."
+  );
+  let result;
+  try {
+    //next one is failing
+    const [
+      rows,
+      fields,
+    ] = await db.execute(
+      "SELECT * FROM store.product where idcmp = ? AND status = ? AND isActive = 1 ORDER BY createdOn ASC LIMIT ? OFFSET 0",
+      [
+        options.ComponentID,
+        SConst.PRODUCT.STATUS.ORDERED,
+        limit,
+      ]
+    );
+    result = rows;
+    logger.debug(
+      {
+        id: options.reqId,
+        type: type,
+        ComponentID: ComponentID
+      },
+      "Fetched ordered products."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
 const markCartToStockInActiveTx = async (connection, options) => {
   logger.debug(
     {
@@ -1039,4 +1332,5 @@ module.exports = {
   modifyProductForCart,
   checkoutACart,
   deleteAProduct,
+  deleteProductsAfterSyncWithPTE
 };
