@@ -216,7 +216,7 @@ const syncPTEInventory = async () => {
 };
 
 const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
-  options.reqId = "syncworker";
+  options.reqId = "syncworker_PTE_inventory";
   options.userName = "pmann";
   options.userId = 100000;
   let storeProducts = [];
