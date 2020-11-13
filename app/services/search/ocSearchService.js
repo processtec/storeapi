@@ -11,12 +11,14 @@ const {
 const {
     SConst
 } = require('../../constants/storeConstants');
+const config = require('config');
+const indexName = config.get('ES.INDEX_OC');
 
 const ocById = async (options) => {
 
     try {
         const result = await OC.search({
-            index: 'och_aug_21_2020_index',
+            index: indexName,
             body: {
                 query: {
                     match: {
@@ -40,7 +42,7 @@ const ocByQuery = async (options) => {
 
     try {
         const result = await OC.search({
-            index: 'och_aug_21_2020_index',
+            index: indexName,
             body: {
                 query: {
                     multi_match: {
@@ -66,7 +68,7 @@ const ocByQuery = async (options) => {
 const createOC = async (options) => {
     try {
         const result = await OC.index({
-            index: 'och_aug_21_2020_index',
+            index: indexName,
             body: options.oc
         });
 

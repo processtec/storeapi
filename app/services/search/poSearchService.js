@@ -11,12 +11,14 @@ const {
 const {
     SConst
 } = require('../../constants/storeConstants');
+const config = require('config');
+const indexName = config.get('ES.INDEX_PO');
 
 const poById = async (options) => {
     
     try {
         const result = await PO.search({
-            index: 'po_aug_21_2020_index',
+            index: indexName,
             body: {
                 query: {
                     match: {
@@ -40,7 +42,7 @@ const poByQuery = async (options) => {
     
     try {
         const result = await PO.search({
-            index: 'po_aug_21_2020_index',
+            index: indexName,
             body: {
                 query: {
                     multi_match: {
