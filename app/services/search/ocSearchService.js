@@ -63,7 +63,25 @@ const ocByQuery = async (options) => {
     }
 };
 
+const createOC = async (options) => {
+    try {
+        const result = await OC.index({
+            index: 'och_aug_21_2020_index',
+            body: options.oc
+        });
+
+        logger.info({
+            id: options.reqId,
+            result: result
+        }, "OC: created new in ES.");
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     ocById,
-    ocByQuery
+    ocByQuery,
+    createOC
 };
