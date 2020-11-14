@@ -14,7 +14,7 @@ const cartService = require("../../services/db/cartService");
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
 // 5 minutes: 5 * 60 * 1000;
 // 5 seconds: 1 * 5 * 1000;
-const waitTime = 1 * 5 * 1000;
+const waitTime = 5 * 60 * 1000;
 const defaultLocationId = 4;
 const defaultLastModifiedBy = "pmann";
 let pteInventorySyncInterval;
@@ -206,11 +206,11 @@ const syncPTEInventory = async () => {
   }
 
   if (pendingComponentsInPTEInventory.length > 0) {
-    console.log('Just completed a sync cycle. Adding a timestamp for it.');
+    console.log('Just completed an Inventory sync cycle. Adding a timestamp for it.');
     // then store the timespamp in inventorySync table.
     await addToProductSync();
   } else {
-    console.log('Just completed a sync cycle and there was nothing to sync.');
+    console.log('There is nothing to sync for PTE inventory.');
   }
   
 };

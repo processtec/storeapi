@@ -344,6 +344,57 @@ const getInventoryForAComponent = async (options) => {
   }
 };
 
+const getOCWithHigherId = async (options) => {
+  try {
+    console.log("Getting OC With Higher than Id..."+ options.orderConfirmationID);
+
+    const request = db.request(); // or: new sql.Request(pool1)
+    // const lastTimeStamp = options.RecordDateTime || "2020-10-04 01:12:33.807"; 
+    const lastRecordDSN = options.recordDSN || 1000; //TODO use me
+
+    const result = await request.query(
+      `SELECT Och.OrderConfirmationID, Och.CustomerQuoteID, Och.OrderConfirmationCode, Och.ProjectSiteID,
+      Och.JobID, Och.Title, Och.CustomerReferenceNumber, Och.ProjectSiteAddress, Och.ContactInfo, Och.TermsOfService,
+      Och.Exclusions, Och.CreateDate, Och.ShipDate, Och.DeliveryDate, Och.LastModifiedDate, Och.LastModifiedBy,
+      Och.Comments, Och.ContactUserDSN, Och.CurrencyTypeID,
+    Jobs.CostCenterID, Jobs.JobName,
+    PS.DocumentFolder
+    FROM [${databaseName}].[Project].[OrderConfirmationHeader] as Och
+    INNER JOIN  [${databaseName}].[Project].[Jobs] as Jobs ON Jobs.JobID = Och.JobID
+    INNER JOIN [${databaseName}].[Project].[ProjectSite] as PS ON PS.ProjectSiteID = Och.ProjectSiteID
+    where Och.OrderConfirmationID > ${options.orderConfirmationID}`
+    );
+    return result.recordset;
+  } catch (err) {
+    console.error("SQL error", err);
+  } finally {
+    // pool1.close();
+  }
+};
+
+const getRecentOC = async () => {
+  try {
+    console.log("Getting PTE RecentOC...");
+
+    const request = db.request(); // or: new sql.Request(pool1)
+
+    // const result = await request.query(
+    //   `SELECT MAX([RecordDateTime]) as RecordDateTime FROM [${databaseName}].[Project].[InventoryLog] where [InventoryID] = ${InventoryID}`
+    // );
+    const result = await request.query(
+      `SELECT TOP (1) [OrderConfirmationID],[CustomerQuoteID],[OrderConfirmationCode],[ProjectSiteID],[CreateDate],[ShipDate],[DeliveryDate],[LastModifiedDate]
+        FROM [${databaseName}].[Project].[OrderConfirmationHeader] ORDER BY OrderConfirmationID DESC
+      `
+    );
+    console.log("PTE RecentOC: ", result.recordset);
+    return result.recordset[0];
+  } catch (err) {
+    console.error("SQL error", err);
+  } finally {
+    // pool1.close();
+  }
+};
+
 module.exports = {
   // startProductSyncWorker: startProductSyncWorker,
   getAllInventory: getAllInventory,
@@ -353,7 +404,9 @@ module.exports = {
   addComponentsToOC: addComponentsToOC,
   getPTEInventoryTS: getPTEInventoryTS,
   getComponentsWithDSN: getComponentsWithDSN,
-  getInventoryForAComponent: getInventoryForAComponent
+  getInventoryForAComponent: getInventoryForAComponent,
+  getOCWithHigherId: getOCWithHigherId,
+  getRecentOC: getRecentOC
 };
 
 /*async function messageHandler() {

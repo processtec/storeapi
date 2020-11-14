@@ -9,7 +9,7 @@ const search = require('./lib/search/es');
 const log = require('./lib/logger/bunyanLogger').logger('index');
 const { componentById } = require('./app/services/search/componentsSearchService');
 const leylaInventoryWorker = require('./app/useCases/workers/leylaWorkersController');
-const leylaOCWorker = require('./app/useCases/workers/leylaWorkersController');
+const leylaOCWorker = require('./app/useCases/workers/leylaOCWorkerController');
 
 
 const testWareHouse = require('./app/services/db/warehouseService'); // TODO remove me
@@ -33,6 +33,7 @@ const testSite = require('./app/services/db/sitesService');
     });
 
     leylaInventoryWorker.productSyncWorkerStart();
+    leylaOCWorker.ocSyncWorkerStart();
 })();
 
 process.on('SIGINT', function() {
