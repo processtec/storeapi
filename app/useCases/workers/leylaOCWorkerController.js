@@ -31,12 +31,12 @@ const ocSyncWorkerStart = async () => {
 };
 
 const runOCSyncDaemon = async () => {
-    console.log("Scheduling timer now for PTE OC sync.....");
+  logger.info("Scheduling timer now for PTE OC sync.....");
     leylaOCSyncInterval = setInterval(function () {
-      console.log("running PTE OC sync after waiting NOW!");
+      logger.debug("running PTE OC sync after waiting NOW!");
       syncPTEOC();
     }, waitTime);
-    console.log(
+    logger.info(
       `Timer scheduled for PTE OC sync. Will run after: ${waitTime}. ZZZZzzzzzz`
     );
   };
@@ -54,7 +54,7 @@ const runOCSyncDaemon = async () => {
       pendingOCsInPTE === null ||
       pendingOCsInPTE === undefined
     ) {
-      console.error(
+      logger.error(
         "Unable to Sync OC's are pendingOCsInPTE is null! Create an alert... TODO!" //TODO
       );
       return;
@@ -77,7 +77,7 @@ const runOCSyncDaemon = async () => {
       // then store the timespamp and recordDSN in inventorySync table.
       await addToOCSync();
     } else {
-      console.log('OC is already in Sync... Nothing new.');
+      logger.info('OC is already in Sync... Nothing new.');
     }
   };
 

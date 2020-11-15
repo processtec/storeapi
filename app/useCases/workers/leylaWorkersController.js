@@ -122,12 +122,12 @@ const createPTEToStoreProductMapping = (options) => {
 };
 
 const runProductSyncDaemon = async () => {
-  console.log("Scheduling timer now for PTE inventory sync.....");
+  logger.debug("Scheduling timer now for PTE inventory sync.....");
   pteInventorySyncInterval = setInterval(function () {
-    console.log("running PTE inventory sync after waiting NOW!");
+    logger.debug("running PTE inventory sync after waiting NOW!");
     syncPTEInventory();
   }, waitTime);
-  console.log(
+  logger.debug(
     `Timer scheduled for PTE inventory sync. Will run after: ${waitTime}. ZZZZzzzzzz`
   );
 };
@@ -143,7 +143,7 @@ const syncPTEInventory = async () => {
 
   for (let index = 0; index < pendingComponentsInPTEInventory.length; index++) {
     const pendingComponent = pendingComponentsInPTEInventory[index];
-    console.log(
+    logger.debug(
       "Getting data for a pending component with componentId: ",
       pendingComponent.ComponentID
     );
@@ -152,7 +152,7 @@ const syncPTEInventory = async () => {
         ComponentID: pendingComponent.ComponentID,
       }
     );
-    console.log(
+    logger.debug(
       "pending inventoryForAComponentInPTE: " +
         pendingComponent.ComponentID +
         ":--> ",
@@ -162,7 +162,7 @@ const syncPTEInventory = async () => {
       pendingComponentInventoryDetailsPTE === null ||
       pendingComponentInventoryDetailsPTE === undefined
     ) {
-      console.error(
+      logger.error(
         "Unable to getInventoryForAComponent in PTE for componentID: ",
         pendingComponent.ComponentID
       );
@@ -200,17 +200,17 @@ const syncPTEInventory = async () => {
     );
 
     await stockService.addProductsTx(productsToBeStoredInStore);
-    console.log(
+    logger.debug(
       `Added ComponentID: ${pendingComponent.ComponentID} ###########################################\n\n`
     );
   }
 
   if (pendingComponentsInPTEInventory.length > 0) {
-    console.log('Just completed an Inventory sync cycle. Adding a timestamp for it.');
+    logger.debug('Just completed an Inventory sync cycle. Adding a timestamp for it.');
     // then store the timespamp in inventorySync table.
     await addToProductSync();
   } else {
-    console.log('There is nothing to sync for PTE inventory.');
+    logger.debug('There is nothing to sync for PTE inventory.');
   }
   
 };
@@ -222,7 +222,7 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
   let storeProducts = [];
 
   if (options.newAvailableQuantity == 0 && options.newReorderQuantity == 0) {
-    console.log("nothing to add for quantity or ordered as both are zero.");
+    logger.debug("nothing to add for quantity or ordered as both are zero.");
     return storeProducts;
   }
 
@@ -233,7 +233,7 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     !Array.isArray(inventoryDetailsForComponent) ||
     inventoryDetailsForComponent.length == 0
   ) {
-    console.error(
+    logger.error(
       "what is wrong with inventoryDetailsForComponent! Unable to find its data in PO details table. Cant do anything.",
       inventoryDetailsForComponent
     );
@@ -251,7 +251,7 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     }
   } else if (options.newAvailableQuantity < 0) {
     await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED);
-    console.log(
+    logger.debug(
       `Deleted ${options.newAvailableQuantity} available products from store products :-(.`
     );
   }
@@ -266,7 +266,7 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     }
   } else if (options.newReorderQuantity < 0) {
     await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED);
-    console.log(
+    logger.debug(
       `Deleted ${options.newAvailableQuantity} reordered products from store products this could be they are available now.`
     );
   }
