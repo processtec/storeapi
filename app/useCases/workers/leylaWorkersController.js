@@ -14,7 +14,7 @@ const cartService = require("../../services/db/cartService");
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
 // 5 minutes: 5 * 60 * 1000;
 // 5 seconds: 1 * 5 * 1000;
-const waitTime = 5 * 60 * 1000;
+const waitTime = 1 * 60 * 1000;
 const defaultLocationId = 4;
 const defaultLastModifiedBy = "pmann";
 let pteInventorySyncInterval;
