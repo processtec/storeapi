@@ -6,7 +6,8 @@
 const _ = require('lodash');
 const logger = require('../../../lib/logger/bunyanLogger').logger('');
 const {
-    OC
+    OC,
+    client
 } = require('../../../lib/search/es');
 const {
     SConst
@@ -69,6 +70,7 @@ const createOC = async (options) => {
     try {
         const result = await OC.index({
             index: indexName,
+            type: 'och_type',
             body: options.oc
         });
 
@@ -82,8 +84,28 @@ const createOC = async (options) => {
     }
 };
 
+const createBulk = async (options) => {
+    try {
+        const body = options.dataset.flatMap(doc => [{ index: { _index: indexName } }, doc]);
+        const result = await client.bulk({ refresh: true, body });
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const refreshOC = async () => {
+    try {
+        await OC.indices.refresh({ index: indexName })
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     ocById,
     ocByQuery,
-    createOC
+    createOC,
+    refreshOC,
+    createBulk
 };

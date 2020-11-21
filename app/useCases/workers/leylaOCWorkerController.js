@@ -59,22 +59,36 @@ const runOCSyncDaemon = async () => {
       );
       return;
     }
-
-    // TODO: more logic
-    for (let index = 0; index < pendingOCsInPTE.length; index++) {
+    /*for (let index = 0; index < pendingOCsInPTE.length; index++) {
         const oc = pendingOCsInPTE[index];
         const options = {
             reqId: "syncworker_PTE_OC",
             userName: "pmann",
             userId: 100000,
-            oc: oc
+            oc: lowercasedKeyedOC(oc)
         };
         
-        await ocService.createOC(options);
-    }
+        const result = await ocService.createOC(options);
+        console.log('Created a new OC: ', result);
+    }*/
 
-    if (pendingOCsInPTE.length > 0) {
+    let lowercasedOCs = [];
+    for (let index = 0; index < pendingOCsInPTE.length; index++) {
+      const oc = pendingOCsInPTE[index];
+      lowercasedOCs.push(lowercasedKeyedOC(oc));
+    }
+    const options = {
+      dataset: lowercasedOCs,
+      eqId: "syncworker_PTE_OC",
+      userName: "pmann",
+      userId: 100000
+    };
+    const result = await ocService.createBulk(options);
+    console.log('Bulk add response: ', result);
+
+    if (lowercasedOCs.length > 0) {
       // then store the timespamp and recordDSN in inventorySync table.
+      // await ocService.refreshOC();
       await addToOCSync();
     } else {
       logger.info('OC is already in Sync... Nothing new.');
@@ -86,6 +100,19 @@ const runOCSyncDaemon = async () => {
     await syncService.createOCSyncTimeStamp({
         orderConfirmationID: iocLog.OrderConfirmationID,
     });
+  };
+
+  const lowercasedKeyedOC = (oc) => {
+    // https://stackoverflow.com/questions/12539574/whats-the-best-way-most-efficient-to-turn-all-the-keys-of-an-object-to-lower
+    let key, keys = Object.keys(oc);
+    let n = keys.length;
+    let lowercasedOC = {};
+    while (n--) {
+      key = keys[n];
+      lowercasedOC[key.toLowerCase()] = oc[key];
+    }
+
+    return lowercasedOC;
   };
 
 module.exports = {
