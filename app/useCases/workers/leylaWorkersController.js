@@ -49,7 +49,7 @@ const createStoreProductsFromLeylaInventory = (leylaInventory) => {
   const uniqueInventory = _.uniqBy(leylaInventory, "ComponentID"); // _.uniq(leylaInventory, x => x.ComponentID);
   for (let i = 0; i < uniqueInventory.length; i++) {
     const item = uniqueInventory[i];
-
+    
     for (let index = 0; index < item.QuantityInStock; index++) {
       /*const product = {
         cmpId: item.ComponentID,
@@ -179,6 +179,15 @@ const syncPTEInventory = async () => {
     if (Array.isArray(stocks) && stocks.length > 0) {
       existingAvailableQuantityInStock = stocks[0].availablequantity || 0;
     }
+
+    if (existingAvailableQuantityInStock < 1) {
+      logger.debug('Creating stock for non available items so that we can add items with 0 quantity in carts.');
+      stockService.createNewStockIfRequired({
+        reqId: "leylaWorkersController_",
+        cmpId: pendingComponent.ComponentID
+      });
+    }
+
     const newAvailableQuantityToBeUpdated =
       pendingComponentInventoryDetailsPTE.QuantityInStock -
       existingAvailableQuantityInStock;
@@ -198,7 +207,7 @@ const syncPTEInventory = async () => {
         stock: stocks[0]
       }
     );
-
+    
     await stockService.addProductsTx(productsToBeStoredInStore);
     logger.debug(
       `Added ComponentID: ${pendingComponent.ComponentID} ###########################################\n\n`
@@ -254,6 +263,8 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     logger.debug(
       `Deleted ${options.newAvailableQuantity} available products from store products :-(.`
     );
+  } else {
+    // case handeled already where we check for if (existingAvailableQuantityInStock < 1) { in func syncPTEInventory
   }
 
   if (options.newReorderQuantity > 0) {
@@ -269,7 +280,10 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     logger.debug(
       `Deleted ${options.newAvailableQuantity} reordered products from store products this could be they are available now.`
     );
+  } else {
+    // case handeled already where we check for if (existingAvailableQuantityInStock < 1) { in func syncPTEInventory
   }
+  
   return storeProducts;
 };
 

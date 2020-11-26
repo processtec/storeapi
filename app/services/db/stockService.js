@@ -125,6 +125,10 @@ const addProductsTx = async (products) => {
     }
 };
 
+const createNewStockIfRequired = async (options) => {
+    await createStockIfRequired(db, options);
+};
+
 const createStockIfRequired = async (connection, options) => {
     // 0. check if stock for this componenet already exisits.
     const stockSearchResult = await findOneStockByComponent(connection, options.cmpId);
@@ -440,7 +444,8 @@ module.exports = {
     sellProductTx,
     findOne,
     findOneByComponentId,
-    getAvailableProductsForStockId
+    getAvailableProductsForStockId,
+    createNewStockIfRequired
     /*create,
     findAll,
     findOne,
