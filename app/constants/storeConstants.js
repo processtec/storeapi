@@ -38,7 +38,8 @@ const storeConst = {
     },
 
     ES: {
-        INDEX_COMPONENTS: "complete_comps_08_15_2020"
+        INDEX_COMPONENTS: "complete_comps_08_15_2020",
+        MAX_RESULTS: 40
     },
 
     ALERT: {

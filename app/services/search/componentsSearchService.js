@@ -89,13 +89,14 @@ const componentsSearched = async (options) => {
     try {
         const result = await Coeus.search({
             index: SConst.ES.INDEX_COMPONENTS,
+            size: SConst.ES.MAX_RESULTS,
             body: {
                 query: {
                     multi_match: {
                         query: options.q,
                         // type: 'best_fields', // this will convert it to dis_max-- https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-best-fields
                         type: 'cross_fields', // without AND -> https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-cross-fields
-                        fields: ['companyname', 'mfgmodelnumber', 'mfgpartnumber', 'sizes', 'elastomers', 'materials', 'taxonomy', 'categorydescription', 'configurationkey']
+                        fields: ['companyname', 'mfgmodelnumber', 'mfgpartnumber', 'sizes', 'elastomers', 'materials', 'taxonomy', 'categorydescription', 'configurationkey', 'stockroomlabel']
                     }
                 }
             }
