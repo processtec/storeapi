@@ -86,6 +86,11 @@ const createOC = async (options) => {
 
 const createBulk = async (options) => {
     try {
+        if (!Array.isArray(options.dataset) || options.dataset.length < 1)  {
+            logger.debug('empty dataset, no need to create any orderconfirmation.');
+            return;
+        }
+        
         const body = options.dataset.flatMap(doc => [{ index: { _index: indexName } }, doc]);
         const result = await client.bulk({ refresh: true, body });
         return result;

@@ -22,12 +22,14 @@
       }
   },
   "LEYLA": {
-    
+
   },
   "ES" : {
     "URL" : "http://127.0.0.1:9200",
-    "INDEX_OC": "och_aug_21_2020_index",
-    "INDEX_PO": "po_aug_21_2020_index"
+    "INDEX_OC": "pte_orderconfirmation",
+    "INDEX_OC_old": "och_aug_21_2020_index",
+    "INDEX_PO": "pte_purchaseorder",
+    "INDEX_PO_old": "po_aug_21_2020_index"
   },
   "DB" : {
     "URL"           : "mongodb://localhost:27017/knowq",

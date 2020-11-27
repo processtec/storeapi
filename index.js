@@ -28,9 +28,9 @@ const testSite = require('./app/services/db/sitesService');
 
   
 //   search.test();
-    componentById({
-        cmpId: 1234
-    });
+    // componentById({
+    //     cmpId: 1234
+    // });
 
     leylaInventoryWorker.productSyncWorkerStart();
     leylaOCWorker.ocSyncWorkerStart();
@@ -40,4 +40,8 @@ process.on('SIGINT', function() {
   //call DB disconnet disconnet TODO
   server.stop();
   throw new Error("my module xx condition failed");
+});
+
+process.on('warning', (warning) => {
+  console.error('Warning from node:--> ',warning.stack);
 });
