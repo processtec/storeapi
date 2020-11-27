@@ -8,11 +8,48 @@ const logger = require('../../../lib/logger/bunyanLogger').logger('');
 const {
     Coeus
 } = require('../../../lib/search/es');
+const leylaService = require('../db/leylaService');
 const {
     SConst
 } = require('../../constants/storeConstants');
 
 const componentById = async (options) => {
+
+    try {
+        const result = await Coeus.search({
+            index: SConst.ES.INDEX_COMPONENTS,
+            // type: '_doc', // uncomment this line if you are using Elasticsearch ≤ 6
+            body: {
+                query: {
+                    match: {
+                        componentid: options.cmpId,
+                        isinpte: true
+                    }
+                }
+            }
+
+            /*body: {
+                query: {
+                    multi_match: {
+                        query: 'Actuator BB 304 EXT EMJ Metals',
+                        type: 'best_fields', // this will convert it to dis_max-- https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-best-fields
+                        fields: ['elastomerdescription', 'taxonomy', 'mfgmodelnumber', 'materialdescription', 'stockroomlabel', 'configurationcode']
+                    }
+                }
+            }*/
+        });
+
+        logger.info({
+            id: options.reqId,
+            result: result.body.hits.hits
+        }, "Coeus: Fetched component by ID.");
+        return result.body.hits.hits;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const allComponentById = async (options) => {
 
     try {
         const result = await Coeus.search({
@@ -144,9 +181,93 @@ const componentsCount = async () => {
     });
 };*/
 
+const markComponentActive = async (options) => {
+
+    try {
+        const components = await allComponentById(options);
+        
+        if (!Array.isArray(components) || components.length < 1) { 
+            logger.error({
+                options: options
+            }, 'Missing component!! trying to add it.');
+
+            let newComponents = await leylaService.getComponentDetails(options);
+            if (!Array.isArray(newComponents) || newComponents.length < 1) { 
+                logger.error({
+                    options: options
+                }, 'Unable to fetch component from the inventory DB!!. Report to Admins.');
+                return;
+            }
+            newComponents[0].isinpte = true;
+            
+            await addComponent({
+                component: newComponents[0]
+            }); 
+        } else {
+            await activateComponent({
+                id: components[0]._id
+            });
+        }
+        
+    } catch (error) {
+        throw error;
+    }
+};
+
+const addComponent = async (options) => {
+    try {
+        const result = await Coeus.index({
+            index: SConst.ES.INDEX_COMPONENTS,
+            body: lowercasedKeyedComponent(options.component)
+        });
+
+        logger.info({
+            id: options.reqId,
+            result: result
+        }, "Component: created a new component.");
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const lowercasedKeyedComponent = (component) => {
+    // https://stackoverflow.com/questions/12539574/whats-the-best-way-most-efficient-to-turn-all-the-keys-of-an-object-to-lower
+    let key, keys = Object.keys(component);
+    let n = keys.length;
+    let lowercasedComponent = {};
+    while (n--) {
+      key = keys[n];
+      lowercasedComponent[key.toLowerCase()] = component[key];
+    }
+
+    return lowercasedComponent;
+  };
+
+// https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/7.x/update_examples.html
+const activateComponent = async (options) => {
+    try {
+        const result = await Coeus.update({
+            index: SConst.ES.INDEX_COMPONENTS,
+            id: options.id,
+            body: {
+              doc: {
+                isinpte: true
+              }
+            }
+          });
+
+          return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     componentById,
     componentsSearched,
     componentsAll,
-    componentsCount
+    componentsCount,
+    markComponentActive,
+    addComponent
 };

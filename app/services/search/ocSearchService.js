@@ -94,6 +94,8 @@ const createBulk = async (options) => {
     }
 };
 
+
+
 const refreshOC = async () => {
     try {
         await OC.indices.refresh({ index: indexName })

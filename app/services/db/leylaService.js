@@ -12,6 +12,111 @@ const { query } = require("express");
 
 const InventoryID = 63;
 const databaseName = "EData3_ProcessTec"; // EData3_ProcessTec , EData3_Test
+
+const getComponentDetails = async (options) => {
+ try {
+  console.log("Getting component details...");
+
+  const request = db.request();
+  const result = await request.query(
+    `
+    SELECT DISTINCT
+          Comp.ComponentID,
+          Comp.CategoryCode,
+          Comp.TaxonomyCode,
+          Comp.DesignTypeID,
+          Comp.ManufacturerID,
+          manf.CompanyName as CompanyName,
+          Comp.ModelID,
+          m.MfgModelNumber + ' (' + ${databaseName}.Cmp.ConcatModelConfigurationAbbreviations(Comp.ComponentID, 0) + ')' as MfgModelNumber,
+          isnull(mpn.MfgPartNumber, '') as MfgPartNumber,
+          Comp.StockRoomLabel,
+          Comp.ElastomerDescription as Elastomers,
+          Comp.ConfigurationCode as [Configurations],
+          replace(Comp.UniversalProductCode, ' // ', '<br /><br />') as UniversalProductCode,
+          Comp.Taxonomy,
+          Comp.MaterialDescription as Materials,
+          Comp.LastModifiedDate,
+          Comp.TariffCode,
+    
+          t.[Description] as CategoryDescription,
+          manf.Symbol as ManufacturersSymbol,
+          dt.[Description] as DesignDescription,
+          Comp.SizeDescription as Sizes,
+          ${databaseName}.Cmp.GetMinimumSizeForComponentID(Comp.ComponentID) as SortSize,
+          Comp.SubcomponentConfigurations,
+          cst.[Description] as ComponentStatus,
+          Comp.ConfigurationKey,
+          Comp.ComponentStatusTypeID,
+    
+          Comp.IsActive,
+          Comp.IsVirtualComponent,
+    
+          Img.[Path],
+          isNull(Img.[FileName], '') as URL,
+          isNull(Img.ImageDescription, 'No Image Available') as ImageDescription
+    
+        from
+        ${databaseName}.Cmp.Components Comp
+    
+        left join (
+            select
+              ComponentID,
+              MfgPartNumber
+            from
+            ${databaseName}.Cmp.MfgPartNumbers
+            -- where
+            --   [Priority] = 100
+          ) mpn
+          on (Comp.ComponentID = mpn.ComponentID)
+    
+          inner join ${databaseName}.Cmp.ComponentStatusTypes cst
+          on (comp.ComponentStatusTypeID = cst.ComponentStatusTypeID)
+    
+          inner join ${databaseName}.Cmp.Manufacturers manf
+          on (Comp.ManufacturerID = manf.ManufacturerID)
+    
+          inner join ${databaseName}.Cmp.DesignTypes dt
+          on (Comp.DesignTypeID = dt.DesignTypeID)
+    
+          inner join ${databaseName}.Cmp.Taxonomy t
+          on (Comp.CategoryCode = t.CategoryCode)
+    
+          inner join ${databaseName}.Cmp.Models m
+          on (Comp.ModelID = m.ModelID)
+    
+          left join (
+            select
+              ed.EntityID as ComponentID,
+              d.[Path] as [Path],
+              d.[FileName] as [FileName],
+              d.[SummaryCaption] as ImageDescription
+            from
+            ${databaseName}.Cmp.EntityDocuments ed
+    
+              inner join ${databaseName}.Cmp.Documents d
+              on (ed.DocumentID = d.DocumentID)
+            where
+              ed.IsSummaryDocument = 1
+    
+          ) img
+          on (Comp.ComponentID = img.ComponentID)
+    
+        where Comp.IsActive = 1
+     AND Comp.ComponentID = ${options.cmpId}`
+  );
+  // TODO: from above remove --> AND inItems.ComponentID = 7115, 17547
+  // console.log("All inventory: ", result.recordset);
+  return result.recordset;
+} catch (err) {
+  console.error("SQL error", err);
+  return null;
+} finally {
+  // pool1.close();
+}
+};
+
+
 const getAllInventory = async () => {
   try {
     console.log("Getting all inventory...");
@@ -406,7 +511,8 @@ module.exports = {
   getComponentsWithDSN: getComponentsWithDSN,
   getInventoryForAComponent: getInventoryForAComponent,
   getOCWithHigherId: getOCWithHigherId,
-  getRecentOC: getRecentOC
+  getRecentOC: getRecentOC,
+  getComponentDetails: getComponentDetails
 };
 
 /*async function messageHandler() {

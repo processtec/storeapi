@@ -11,10 +11,12 @@ const stockService = require("../../services/db/stockService");
 const errorRes = require("../../../lib/error/storeError");
 const { SConst } = require("../../constants/storeConstants");
 const cartService = require("../../services/db/cartService");
+const ocSearchService = require("../../services/search/ocSearchService");
+const componentSearchService = require("../../services/search/componentsSearchService");
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
 // 5 minutes: 5 * 60 * 1000;
 // 5 seconds: 1 * 5 * 1000;
-const waitTime = 1 * 60 * 1000;
+const waitTime = 2 * 60 * 1000;
 const defaultLocationId = 4;
 const defaultLastModifiedBy = "pmann";
 let pteInventorySyncInterval;
@@ -180,6 +182,11 @@ const syncPTEInventory = async () => {
       existingAvailableQuantityInStock = stocks[0].availablequantity || 0;
     }
 
+    // TODO make this component active in ES.
+    await componentSearchService.markComponentActive({
+      cmpId: pendingComponent.ComponentID
+    });
+
     if (existingAvailableQuantityInStock < 1) {
       logger.debug('Creating stock for non available items so that we can add items with 0 quantity in carts.');
       stockService.createNewStockIfRequired({
@@ -283,7 +290,7 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
   } else {
     // case handeled already where we check for if (existingAvailableQuantityInStock < 1) { in func syncPTEInventory
   }
-  
+
   return storeProducts;
 };
 
