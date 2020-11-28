@@ -84,7 +84,7 @@ const runOCSyncDaemon = async () => {
       userId: 100000
     };
     const result = await ocService.createBulk(options);
-    console.log('Bulk add response: ', result);
+    logger.debug('Bulk add response: ', result);
 
     if (lowercasedOCs.length > 0) {
       // then store the timespamp and recordDSN in inventorySync table.

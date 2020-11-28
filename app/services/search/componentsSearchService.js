@@ -22,8 +22,7 @@ const componentById = async (options) => {
             body: {
                 query: {
                     match: {
-                        componentid: options.cmpId,
-                        isinpte: true
+                        componentid: options.cmpId
                     }
                 }
             }
@@ -43,6 +42,7 @@ const componentById = async (options) => {
             id: options.reqId,
             result: result.body.hits.hits
         }, "Coeus: Fetched component by ID.");
+        // TODO: check for  --> isinpte: true
         return result.body.hits.hits;
     } catch (error) {
         throw error;
