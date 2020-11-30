@@ -1,8 +1,8 @@
 {
   "SERVER" : {
       "PORT"        : 8080,
-      "IP"          : "50.18.9.107",
-      "PUBLIC_DIR"  : "../../public",
+      "IP"          : "13.57.196.153",
+      "PUBLIC_DIR"  : "../../../documentation",
       "API_BASE"    : "/kd",
       "LOG_PERIOD"  : "1d",
       "MAX_LOGS"    : 5,
@@ -22,7 +22,7 @@
       }
   },
   "LEYLA": {
-
+    
   },
   "ES" : {
     "URL" : "http://127.0.0.1:9200",
