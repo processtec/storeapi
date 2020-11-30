@@ -31,9 +31,10 @@ const storeConst = {
       STATUS: {
         NOT_ACTIVE: 0,
         AVAILABLE: 1,
-        COMPLETED: 2,
-        DELETED: 3,
-        UNKNOWN: 4
+        PARTIAL_COMPLETED: 2,
+        COMPLETED: 3,
+        DELETED: 4,
+        UNKNOWN: 5
       }
     },
 
