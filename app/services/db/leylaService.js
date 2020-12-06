@@ -11,6 +11,7 @@ const moment = require("moment");
 const { query } = require("express");
 
 const InventoryID = 63;
+const InventorySupplierID = 173;
 const databaseName = "EData3_ProcessTec"; // EData3_ProcessTec , EData3_Test
 
 const getComponentDetails = async (options) => {
@@ -118,6 +119,7 @@ const getComponentDetails = async (options) => {
 
 
 const getAllInventory = async () => {
+  // this query is similar to getInventoryDetailsForAComponent except it doesnt take the component id
   try {
     console.log("Getting all inventory...");
 
@@ -144,7 +146,7 @@ const getAllInventory = async () => {
       ,PODetail.PurchaseOrderID
       ,PODetail.QuantityOrdered
       ,PODetail.QuantityReceived
-      ,PODetail.UnitPrice
+      ,PODetail.Old_UnitPrice
       ,PODetail.LastModifiedDate
       ,PODetail.Miscellaneous
       ,PODetail.DiscountPercent
@@ -156,10 +158,12 @@ const getAllInventory = async () => {
       ,POHeader.PurchaseOrderCode
       ,POHeader.ProjectName
       ,Supp.CompanyName as SupplierCompany
+      ,isnull(vcp.IndividualListPrice, '') as UnitPrice
   FROM [${databaseName}].[Project].[InventoryItems] as inItems
   INNER JOIN [${databaseName}].[Project].[PurchaseOrderDetail] as PODetail ON PODetail.ComponentID = inItems.ComponentID
   INNER JOIN [${databaseName}].[Project].[PurchaseOrderHeader] as POHeader ON POHeader.PurchaseOrderID = PODetail.PurchaseOrderID
   INNER JOIN [${databaseName}].[Cmp].[Suppliers] as Supp ON Supp.SupplierID = POHeader.SupplierID
+  LEFT join EData3_ProcessTec.Cmp.VendorComponentPricing vcp on (inItems.ComponentID = vcp.ComponentID) AND vcp.SupplierID = ${InventorySupplierID}
 
    WHERE inItems.InventoryID = ${InventoryID}
   ORDER BY PODetail.LastModifiedDate DESC`
@@ -202,7 +206,7 @@ const getInventoryDetailsForAComponent = async (options) => {
       ,PODetail.PurchaseOrderID
       ,PODetail.QuantityOrdered
       ,PODetail.QuantityReceived
-      ,PODetail.UnitPrice
+      ,PODetail.Old_UnitPrice
       ,PODetail.LastModifiedDate
       ,PODetail.Miscellaneous
       ,PODetail.DiscountPercent
@@ -214,10 +218,12 @@ const getInventoryDetailsForAComponent = async (options) => {
       ,POHeader.PurchaseOrderCode
       ,POHeader.ProjectName
       ,Supp.CompanyName as SupplierCompany
+      ,isnull(vcp.IndividualListPrice, '') as UnitPrice
   FROM [${databaseName}].[Project].[InventoryItems] as inItems
   INNER JOIN [${databaseName}].[Project].[PurchaseOrderDetail] as PODetail ON PODetail.ComponentID = inItems.ComponentID
   INNER JOIN [${databaseName}].[Project].[PurchaseOrderHeader] as POHeader ON POHeader.PurchaseOrderID = PODetail.PurchaseOrderID
   INNER JOIN [${databaseName}].[Cmp].[Suppliers] as Supp ON Supp.SupplierID = POHeader.SupplierID
+  LEFT join EData3_ProcessTec.Cmp.VendorComponentPricing vcp on (inItems.ComponentID = vcp.ComponentID) AND vcp.SupplierID = ${InventorySupplierID}
 
    WHERE inItems.InventoryID = ${InventoryID} AND inItems.ComponentID = ${options.ComponentID}
   ORDER BY PODetail.LastModifiedDate DESC`
