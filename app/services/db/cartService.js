@@ -694,6 +694,76 @@ const getReportCartById = async (options) => {
   }
 };
 
+const createShipmentReport = async (connection, options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "Creating a new shipment report."
+  );
+  
+  let result;
+  try {
+    const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "INSERT INTO store.report_shipment SET idcart_tx = ?, status = ?, title = ?, description = ?",
+      [options.idcart_tx, status, options.title, options.description]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "New shipment repot created."
+    );
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw err;
+  } finally {
+    return result;
+  }
+};
+
+const createShipmentDetailsReport = async (connection, options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "Creating a new shipment report."
+  );
+  12/19 work here and create various quantities.
+  let result;
+  try {
+    const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?",
+      [options.idreport_shipment, options.idstock, options.quantity, options.shipped, options.backOrderQuantity, options.idcmp, options.saleprice]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "New shipment repot created."
+    );
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw err;
+  } finally {
+    return result;
+  }
+};
+
 const updateStockForCartCheckout = async (connection, options) => {
   logger.debug(
     {
