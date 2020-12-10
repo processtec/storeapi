@@ -13,6 +13,8 @@ const { SConst } = require("../../constants/storeConstants");
 const stockService = require("./stockService");
 const leylaService = require("./leylaService");
 const ocService = require("../search/ocSearchService");
+const { checkout } = require("../../useCases/cart/cartController");
+const { Table } = require("mssql");
 
 const getById = async (options) => {
   const cart = await getCartById(options);
@@ -295,14 +297,78 @@ const checkoutACart = async (options) => {
       ocID: options.ocId,
     });
 
+    let isPartialShipment = false;
+
+    for (let index = 0; index < stocks.length; index++) {
+      const stock = stocks[index];
+
+      if(stock.quantity > stock.details.availablequantity) {
+        isPartialShipment = true;
+        break;
+      }
+    }
+
+    // todo: create an entry in cartTx table for this.
+    const reportCartTx =  await createOrUpdateReportCartTx(connection, options);
+
+    for (let index = 0; index < stocks.length; index++) {
+      const stock = stocks[index];
+      const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
+      const requiredQuantity = stock.quantity; // quantity asked by user in cart
+
+      detailedMessage = `component: ${stock.details.idcmp}, quantity: ${products.length} \n`;
+      
+      //update stock quantity 
+      await updateStockForCartCheckout(connection, {
+        availablequantity: availablequantity,
+        quantity: requiredQuantity,
+        idUser: options.userId,
+        idstock: stock.idstock,
+      });
+
+
+      await updateCartToStockWithShipmentDetails(connection, options);
+      
+      // NEW PTE sync step:
+      // TODO ideally controller should do that instead of service calling a service or better if Manager does that.
+      //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
+      await leylaService.updateInventory({
+        availablequantity: availablequantity,
+        ComponentID: stock.details.idcmp,
+        ocId: options.ocId,
+        quantity: requiredQuantity,
+        DiscountToCustomer: 0,
+        Margin: 0,
+        QuotedPrice: products[0].costprice,
+        CostType: 0,
+        Miscellaneous: `Added from Store API for cartID: ${options.cartId}, ocId: ${options.ocId}`,
+        ToDollarConversion: 0,
+        ItemNumber: index + 10, //increment by 10
+        Shipped: 0,
+        CurrencyTypeID: 1,
+        CurrencyConversionRate: 1,
+        SupplierID: products[0].idsupplier,
+        jobId: orderConfirmaion[0]._source.jobid,
+      });
+
+      const reportShipment = await createShipmentReport(connection, options);
+      await createShipmentDetailsReport(connection, options);
+    }
+
+    /*
     for (let index = 0; index < stocks.length; index++) {
       const stock = stocks[index];
       const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
 
       const limit = stock.quantity; // quantity asked by user in cart
       const products = await getProductsForStockId(options, stock, limit);
-      // 3. If quantity asked for any of the product in cart is less than available in stocks table discard the transaction with reason.
+      // 3. If quantity asked for any of the product in cart is less than available in stocks table,
+      // dont discard the transaction instead do a partial checkout
+
+
+
       if (products.length < stock.quantity) {
+        isPartialShipment = true;
         result = {
           availablequantity: availablequantity, // or products.lenght
           availableProducts: products.length,
@@ -344,9 +410,11 @@ const checkoutACart = async (options) => {
           cart
         );
         // above one not woking....
+
+        // TODO: Create cart transaction
       }
 
-      //update stock quantity
+      //update stock quantity 
       await updateStockForCartCheckout(connection, {
         availablequantity: availablequantity,
         quantity: limit,
@@ -375,17 +443,21 @@ const checkoutACart = async (options) => {
         SupplierID: products[0].idsupplier,
         jobId: orderConfirmaion[0]._source.jobid,
       });
+    }*/
+
+    if (!isPartialShipment) {
+      // if not partial shipment that means mark all stocks in this table inactive
+      this can be achieved above too?
+      await markCartToStockInActiveTx(connection, options);
     }
 
-    // 7. mark cart as completed
-    await markCartToStockInActiveTx(connection, options);
-    await markCartInActiveTx(connection, options);
+    await markCartInActiveTx(connection, options, isPartialShipment);
 
     // 8. TODO send an event for alert. Do we need to send it now or after the func returns and with some low level priority queue?.
     // await createAlertTx(connection, options);
     const message = `${options.userName} checked out a cart with id: ${cart.idcart}`;
     alertService.create({
-      type: SConst.ALERT.TYPE.CHECKOUT_SUCCESS,
+      type: isPartialShipment ? SConst.ALERT.TYPE.CHECKOUT_SUCCESS : SConst.ALERT.TYPE.PARTIAL_CHECKOUT_SUCCESS,
       idUser: options.userId,
       userName: options.userName,
       message: message,
@@ -503,6 +575,125 @@ const deleteProductsAfterSyncWithPTE = async (options, type) => {
 Private
 */
 
+const createOrUpdateReportCartTx = async (connection, options) => {
+  const existingCartReport = await getReportCartById(options);
+
+  if (existingCartReport) {
+    // update
+    await updateReportCart(connection, options);
+  } else {
+    // create cart report
+    await createReportCart(connection, options);
+  }
+
+  
+};
+
+const createReportCart = async (connection, options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "Creating a new cart report."
+  );
+  
+  let result;
+  try {
+    const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "INSERT INTO store.report_cart_tx SET idcart = ?, description = ?, title = ?, jobname = ?, idOC = ?, costcenterid = ?, fname = ?, lname = ?, status = ?, idUser = ?",
+      [options.idcart, options.description, options.title, options.jobname, options.idoc, options.costcenterid, options.fname, options.lname, status, options.idUser]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "New cart repot created."
+    );
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw err;
+  } finally {
+    return result;
+  }
+};
+
+const updateReportCart = async (connection, options) => {
+  const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED;
+
+  logger.debug(
+    {
+      id: options.reqId,
+      status: status
+    },
+    "Updating an existing cart report.",
+    options.cartId
+  );
+
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE store.report_cart_tx SET status = ? where idcart = ?",
+      [status, options.cartId]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "Report cart updated."
+    );
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw e;
+  }
+}
+
+const getReportCartById = async (options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+      cartId: options.cartId
+    },
+    "Getting a report cart for cartID"
+  );
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await db.execute(
+      "SELECT * FROM store.report_cart_tx where idcart = ? AND status <> ?",
+      [options.cartId, SConst.REPORT_CART.STATUS.DELETED]
+    ); // TODO: as of now showing all reports to eveyone.
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "fetched a report cart for a user."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
 const updateStockForCartCheckout = async (connection, options) => {
   logger.debug(
     {
@@ -511,8 +702,7 @@ const updateStockForCartCheckout = async (connection, options) => {
     "updating stock for cart checkout."
   );
   const newQuantity = options.availablequantity - options.quantity;
-  const availablequantity = newQuantity < 0 ? 0 : newQuantity;
-
+  // const availablequantity = newQuantity < 0 ? 0 : newQuantity; we are allowing -ve quantity
   // const maximumquantity = options.stock.maximumquantity < availablequantity; // TODO send an alert. Do I need a new alert table?
 
   let result;
@@ -522,7 +712,7 @@ const updateStockForCartCheckout = async (connection, options) => {
       fields,
     ] = await connection.query(
       "UPDATE stock SET availablequantity = ?, lastModifiedBy = ? where idstock = ?",
-      [availablequantity, options.idUser, options.idstock]
+      [newQuantity, options.idUser, options.idstock]
     );
     result = rows;
     logger.info(
@@ -1281,12 +1471,54 @@ const markCartToStockInActiveTx = async (connection, options) => {
   }
 };
 
-const markCartInActiveTx = async (connection, options) => {
+const updateCartToStockWithShipmentDetails = async (connection, options) => {
   logger.debug(
     {
       id: options.reqId,
     },
-    "Making cart inactive for cartId: ",
+    "updating cart to stock for cartId: ",
+    options.cartId
+  );
+
+  const shipped = options.availablequantity;
+  const pendingQuantity = options.availablequantity - options.reorderQuantity;
+  const isPartialShipment = pendingQuantity < 0;
+  const isActive = isPartialShipment ? 1 : 0; // if not partial that means we are done with this.
+
+  let result;
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE store.cart_stock SET idstock = ?, quantity = ?, shippedQuantity = ?,  isActive = ? where idcart = ? ",
+      [options.idstock, Math.abs(pendingQuantity), shipped, isActive,  options.cartId]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "cart to stock updated."
+    );
+    return result;
+  } catch (e) {
+    // TODO return error
+    logger.error(e);
+    throw e;
+  }
+};
+
+const markCartInActiveTx = async (connection, options, isPartialShipment) => {
+  const status = isPartialShipment ? SConst.CART.STATUS.PARTIAL_COMPLETED : SConst.CART.STATUS.COMPLETED;
+
+  logger.debug(
+    {
+      id: options.reqId,
+      status: status
+    },
+    "Making cart completed or partial for cartId: ",
     options.cartId
   );
 
@@ -1297,7 +1529,7 @@ const markCartInActiveTx = async (connection, options) => {
       fields,
     ] = await connection.query(
       "UPDATE store.cart SET isActive = 0, status = ? where idcart = ? ",
-      [SConst.CART.STATUS.COMPLETED, options.cartId]
+      [status, options.cartId]
     );
     result = rows;
     logger.info(
@@ -1305,7 +1537,7 @@ const markCartInActiveTx = async (connection, options) => {
         id: options.reqId,
         result: result,
       },
-      "cart marked inactive."
+      "cart to stock updated."
     );
   } catch (e) {
     // TODO return error

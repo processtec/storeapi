@@ -37,6 +37,21 @@ const storeConst = {
         UNKNOWN: 5
       }
     },
+    REPORT_CART: {
+        STATUS: {
+            PARTIAL_COMPLETED: 1,
+            COMPLETED: 2,
+            DELETED: 3
+        }
+    },
+    SHIPMENT: {
+        STATUS: {
+            UNKNOWN: 0,
+            COMPLETED: 1,
+            PARTIAL_COMPLETED: 2,
+            DELETED: 3
+          }
+    },
 
     ES: {
         INDEX_COMPONENTS: "pte_components",// "complete_comps_08_15_2020",
@@ -48,6 +63,7 @@ const storeConst = {
         
         TYPE: {
             CHECKOUT_SUCCESS: 1,
+            PARTIAL_CHECKOUT_SUCCESS: 2,
             
             PRODUCT_AVAILABLE: 5,
             PRODUCT_DAMAGED: 6,
