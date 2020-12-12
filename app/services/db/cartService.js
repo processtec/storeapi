@@ -13,8 +13,9 @@ const { SConst } = require("../../constants/storeConstants");
 const stockService = require("./stockService");
 const leylaService = require("./leylaService");
 const ocService = require("../search/ocSearchService");
-const { checkout } = require("../../useCases/cart/cartController");
+// const { checkout } = require("../../useCases/cart/cartController");
 const { Table } = require("mssql");
+const { HEBREW } = require("mysql2/lib/constants/charsets");
 
 const getById = async (options) => {
   const cart = await getCartById(options);
@@ -308,6 +309,8 @@ const checkoutACart = async (options) => {
       }
     }
 
+    options.isPartialShipment = isPartialShipment;
+    options.ocDetails = orderConfirmaion[0]._source;
     // todo: create an entry in cartTx table for this.
     const reportCartTx =  await createOrUpdateReportCartTx(connection, options);
 
@@ -316,8 +319,11 @@ const checkoutACart = async (options) => {
       const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
       const requiredQuantity = stock.quantity; // quantity asked by user in cart
 
-      detailedMessage = `component: ${stock.details.idcmp}, quantity: ${products.length} \n`;
+      detailedMessage = `Shipping: component: ${stock.details.idcmp}, quantity: ${availablequantity} \n`;
       
+      options.availablequantity = availablequantity;
+      options.requiredQuantity = requiredQuantity;
+      options.stock = stock;
       //update stock quantity 
       await updateStockForCartCheckout(connection, {
         availablequantity: availablequantity,
@@ -328,7 +334,10 @@ const checkoutACart = async (options) => {
 
 
       await updateCartToStockWithShipmentDetails(connection, options);
-      
+      works till here. Start from here dec-11
+      const reportShipment = await createShipmentReport(connection, options);
+      await createShipmentDetailsReport(connection, options);
+
       // NEW PTE sync step:
       // TODO ideally controller should do that instead of service calling a service or better if Manager does that.
       //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
@@ -350,9 +359,6 @@ const checkoutACart = async (options) => {
         SupplierID: products[0].idsupplier,
         jobId: orderConfirmaion[0]._source.jobid,
       });
-
-      const reportShipment = await createShipmentReport(connection, options);
-      await createShipmentDetailsReport(connection, options);
     }
 
     /*
@@ -447,7 +453,6 @@ const checkoutACart = async (options) => {
 
     if (!isPartialShipment) {
       // if not partial shipment that means mark all stocks in this table inactive
-      this can be achieved above too?
       await markCartToStockInActiveTx(connection, options);
     }
 
@@ -578,12 +583,12 @@ Private
 const createOrUpdateReportCartTx = async (connection, options) => {
   const existingCartReport = await getReportCartById(options);
 
-  if (existingCartReport) {
-    // update
-    await updateReportCart(connection, options);
-  } else {
+  if (!Array.isArray(existingCartReport) || existingCartReport.length < 1) { 
     // create cart report
     await createReportCart(connection, options);
+  } else {
+    // update
+    await updateReportCart(connection, options);
   }
 
   
@@ -596,7 +601,9 @@ const createReportCart = async (connection, options) => {
     },
     "Creating a new cart report."
   );
-  
+  options.description = options.description || "Default description from code";
+  options.title = options.title || "Default title from code";
+
   let result;
   try {
     const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
@@ -605,7 +612,7 @@ const createReportCart = async (connection, options) => {
       fields,
     ] = await connection.query(
       "INSERT INTO store.report_cart_tx SET idcart = ?, description = ?, title = ?, jobname = ?, idOC = ?, costcenterid = ?, fname = ?, lname = ?, status = ?, idUser = ?",
-      [options.idcart, options.description, options.title, options.jobname, options.idoc, options.costcenterid, options.fname, options.lname, status, options.idUser]
+      [options.cartId, options.description, options.title, options.ocDetails.jobname, options.ocId, options.ocDetails.costcenterid, options.fName, options.lName, status, options.userId]
     );
     result = rows;
     logger.info(
@@ -736,7 +743,7 @@ const createShipmentDetailsReport = async (connection, options) => {
     },
     "Creating a new shipment report."
   );
-  12/19 work here and create various quantities.
+  
   let result;
   try {
     const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
@@ -1551,7 +1558,7 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
   );
 
   const shipped = options.availablequantity;
-  const pendingQuantity = options.availablequantity - options.reorderQuantity;
+  const pendingQuantity = options.availablequantity - options.requiredQuantity;
   const isPartialShipment = pendingQuantity < 0;
   const isActive = isPartialShipment ? 1 : 0; // if not partial that means we are done with this.
 
@@ -1562,7 +1569,7 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
       fields,
     ] = await connection.query(
       "UPDATE store.cart_stock SET idstock = ?, quantity = ?, shippedQuantity = ?,  isActive = ? where idcart = ? ",
-      [options.idstock, Math.abs(pendingQuantity), shipped, isActive,  options.cartId]
+      [options.stock.idstock, Math.abs(pendingQuantity), shipped, isActive,  options.cartId]
     );
     result = rows;
     logger.info(

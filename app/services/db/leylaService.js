@@ -146,7 +146,6 @@ const getAllInventory = async () => {
       ,PODetail.PurchaseOrderID
       ,PODetail.QuantityOrdered
       ,PODetail.QuantityReceived
-      ,PODetail.Old_UnitPrice
       ,PODetail.LastModifiedDate
       ,PODetail.Miscellaneous
       ,PODetail.DiscountPercent
@@ -206,7 +205,6 @@ const getInventoryDetailsForAComponent = async (options) => {
       ,PODetail.PurchaseOrderID
       ,PODetail.QuantityOrdered
       ,PODetail.QuantityReceived
-      ,PODetail.Old_UnitPrice
       ,PODetail.LastModifiedDate
       ,PODetail.Miscellaneous
       ,PODetail.DiscountPercent
