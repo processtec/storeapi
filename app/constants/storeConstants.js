@@ -29,7 +29,6 @@ const storeConst = {
 
     CART: {
       STATUS: {
-        NOT_ACTIVE: 0,
         AVAILABLE: 1,
         PARTIAL_COMPLETED: 2,
         COMPLETED: 3,

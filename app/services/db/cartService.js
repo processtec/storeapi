@@ -16,6 +16,7 @@ const ocService = require("../search/ocSearchService");
 // const { checkout } = require("../../useCases/cart/cartController");
 const { Table } = require("mssql");
 const { HEBREW } = require("mysql2/lib/constants/charsets");
+const { result } = require("lodash");
 
 const getById = async (options) => {
   const cart = await getCartById(options);
@@ -299,25 +300,51 @@ const checkoutACart = async (options) => {
     });
 
     let isPartialShipment = false;
-
+    let isThereSomethingToShip = false;
     for (let index = 0; index < stocks.length; index++) {
       const stock = stocks[index];
 
-      if(stock.quantity > stock.details.availablequantity) {
+      if(stock.details.availablequantity > 0 
+        && stock.quantity > stock.details.availablequantity) {
+        
         isPartialShipment = true;
+        isThereSomethingToShip = true;
         break;
       }
     }
 
+    if (!isThereSomethingToShip) {
+      return {
+        errorCode: 428, // Precondition Required
+        error: {
+            message: 'No stock present for any product in cart! Try again later.'
+        }
+    }
+    }
+
     options.isPartialShipment = isPartialShipment;
     options.ocDetails = orderConfirmaion[0]._source;
+    
     // todo: create an entry in cartTx table for this.
     const reportCartTx =  await createOrUpdateReportCartTx(connection, options);
+    options.reportCartId = reportCartTx;
+    const reportShipmentTx = await createShipmentReport(connection, options);
+    options.reportShipmentInsertId = reportShipmentTx;
 
     for (let index = 0; index < stocks.length; index++) {
       const stock = stocks[index];
       const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
       const requiredQuantity = stock.quantity; // quantity asked by user in cart
+
+      if(availablequantity < 1 ) {
+        // skipping it as we dont have any quantity aailable for this.
+        logger.debug({
+          stock: stock,
+          availablequantity: availablequantity,
+          requiredQuantity: requiredQuantity
+        }, "skipping it as we dont have any quantity aailable for this.");
+        continue;
+      }
 
       detailedMessage = `Shipping: component: ${stock.details.idcmp}, quantity: ${availablequantity} \n`;
       
@@ -334,13 +361,13 @@ const checkoutACart = async (options) => {
 
 
       await updateCartToStockWithShipmentDetails(connection, options);
-      works till here. Start from here dec-11
-      const reportShipment = await createShipmentReport(connection, options);
+      
       await createShipmentDetailsReport(connection, options);
 
       // NEW PTE sync step:
       // TODO ideally controller should do that instead of service calling a service or better if Manager does that.
       //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
+      /* TODO tmp off -- enable me
       await leylaService.updateInventory({
         availablequantity: availablequantity,
         ComponentID: stock.details.idcmp,
@@ -358,7 +385,7 @@ const checkoutACart = async (options) => {
         CurrencyConversionRate: 1,
         SupplierID: products[0].idsupplier,
         jobId: orderConfirmaion[0]._source.jobid,
-      });
+      }); */
     }
 
     /*
@@ -585,10 +612,12 @@ const createOrUpdateReportCartTx = async (connection, options) => {
 
   if (!Array.isArray(existingCartReport) || existingCartReport.length < 1) { 
     // create cart report
-    await createReportCart(connection, options);
+    let result = await createReportCart(connection, options);
+    return result;
   } else {
     // update
-    await updateReportCart(connection, options);
+  await updateReportCart(connection, options);
+    return existingCartReport[0].idcart_tx;
   }
 
   
@@ -627,7 +656,7 @@ const createReportCart = async (connection, options) => {
     logger.error(e);
     throw err;
   } finally {
-    return result;
+    return result.insertId;
   }
 };
 
@@ -664,6 +693,8 @@ const updateReportCart = async (connection, options) => {
     // TODO return error
     logger.error(e);
     throw e;
+  } finally {
+    return result;
   }
 }
 
@@ -717,7 +748,7 @@ const createShipmentReport = async (connection, options) => {
       fields,
     ] = await connection.query(
       "INSERT INTO store.report_shipment SET idcart_tx = ?, status = ?, title = ?, description = ?",
-      [options.idcart_tx, status, options.title, options.description]
+      [options.reportCartId, status, options.title, options.description]
     );
     result = rows;
     logger.info(
@@ -732,7 +763,7 @@ const createShipmentReport = async (connection, options) => {
     logger.error(e);
     throw err;
   } finally {
-    return result;
+    return result.insertId;
   }
 };
 
@@ -743,7 +774,7 @@ const createShipmentDetailsReport = async (connection, options) => {
     },
     "Creating a new shipment report."
   );
-  
+  const backOrderQuantity = options.availablequantity - options.requiredQuantity;
   let result;
   try {
     const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
@@ -752,7 +783,7 @@ const createShipmentDetailsReport = async (connection, options) => {
       fields,
     ] = await connection.query(
       "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?",
-      [options.idreport_shipment, options.idstock, options.quantity, options.shipped, options.backOrderQuantity, options.idcmp, options.saleprice]
+      [options.reportShipmentInsertId, options.stock.idstock, options.requiredQuantity, options.availablequantity, Math.abs(backOrderQuantity), options.stock.details.idcmp, options.stock.details.price]
     );
     result = rows;
     logger.info(
@@ -1255,8 +1286,8 @@ const getCartById = async (options) => {
       rows,
       fields,
     ] = await db.execute(
-      "SELECT * FROM store.cart where idUser = ? AND idcart = ? AND status = ? LIMIT 0, 1",
-      [options.userId, options.cartId, SConst.CART.STATUS.AVAILABLE]
+      "SELECT * FROM store.cart where idUser = ? AND idcart = ? AND status < ? LIMIT 0, 1",
+      [options.userId, options.cartId, SConst.CART.STATUS.COMPLETED]
     );
     result = rows;
     logger.info(
@@ -1310,8 +1341,8 @@ const getCarts = async (options) => {
       rows,
       fields,
     ] = await db.execute(
-      "SELECT * FROM store.cart where idUser = ? AND status = ?",
-      [options.userId, SConst.CART.STATUS.AVAILABLE]
+      "SELECT * FROM store.cart where idUser = ? AND status < ?",
+      [options.userId, SConst.CART.STATUS.COMPLETED]
     );
     result = rows;
     logger.info(
