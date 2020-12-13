@@ -210,6 +210,36 @@ const deleteCart = async (req, res) => {
     return res.send(result);
 };
 
+const addProducts = async (req, res) => {
+    logger.info({
+        id: req.id,
+        cartId: req.params.id
+    }, "Add products to cart called.");
+    const decodedRole = req.decoded.role;
+    if (!isRoleValid(expectedRole, decodedRole)) {
+        logger.error({
+            error: 'forbidden'
+        }, "user not allowed.");
+        return sender.send(res, forbiddenResult);
+    }
+
+    const cartId = Number(req.params.id);
+    if (!Number.isInteger(cartId)) {
+        return res.send(errorRes("cart id should be an integar!", "path", "stack", "code"));
+    }
+    const userId = req.decoded.id;
+    const cmpIds = req.body.cmpIds;
+
+    const result = await service.addProductsToCart({
+        idUser: userId,
+        cartId: cartId,
+        cmpIds: cmpIds,
+        quantity: 1,
+        reqId: req.id
+    });
+    return sender.send(res, result); //TODO parse them before sending
+};
+
 const addProduct = async (req, res) => {
     logger.info({
         id: req.id,
@@ -238,7 +268,7 @@ const addProduct = async (req, res) => {
         quantity: quantity,
         reqId: req.id
     });
-    return res.send(result); //TODO parse them before sending
+    return sender.send(res, result); //TODO parse them before sending
 };
 
 const modifyProduct = async (req, res) => {
@@ -340,6 +370,7 @@ module.exports = {
     getCart,
 
     createCart,
+    addProducts,
     addProduct,
 
     modifyCart,

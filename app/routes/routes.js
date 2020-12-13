@@ -63,6 +63,7 @@ const register = (options) => {
   router.get('/cart/:id', cart.getCart);
 
   router.post('/cart', cart.createCart);
+  router.post('/cart/:id/products', cart.addProducts);
   router.post('/cart/:id/product', cart.addProduct);
 
   router.put('/cart/:id', cart.modifyCart);

@@ -14,6 +14,12 @@ const {
 } = require('../../constants/storeConstants');
 const logger = require('../../../lib/logger/bunyanLogger').logger('');
 const expectedRole = SConst.USER.ROLES.ENGINEER;
+const forbiddenResult = {
+    errorCode: 403,
+    error: {
+        message: 'Forbidden'
+    }
+};
 
 // returns all carts which has done a shipment
 const getAllCartsReport = async (req, res) => {

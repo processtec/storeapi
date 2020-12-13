@@ -210,6 +210,59 @@ const deleteOne = async (options) => {
   }
 };
 
+const addProductsToCart = async (options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "adding a new product for cartId:",
+    options.cartId
+  );
+
+  if (!Array.isArray(options.cmpIds) || options.cmpIds.length < 1) {
+    return {
+      errorCode: 420,
+      error: {
+          message: 'Bad request: cmpIds must be an array.'
+      }
+    };
+  }
+
+  const stocks = await stockService.findStocksComponentIds(options);
+
+  let result;
+  let sql = "INSERT INTO store.cart_stock (idcart, idstock, quantity, idUser) VALUES ?";
+  let values = [];
+  for (let index = 0; index < stocks.length; index++) {
+    const stock = stocks[index];
+    const value = [options.cartId, stock.idstock, options.quantity, options.idUser];
+    values.push(value);
+  }
+
+  try {
+    const [
+      rows,
+      fields,
+    ] = await db.query(
+      sql, [values]      
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "added products to cart."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
 const addProductToCart = async (options) => {
   logger.debug(
     {
@@ -1667,6 +1720,7 @@ module.exports = {
   modifyStatus,
   deleteAll,
   deleteOne,
+  addProductsToCart,
   addProductToCart,
   modifyProductForCart,
   checkoutACart,

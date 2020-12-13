@@ -404,6 +404,31 @@ const findOneByComponentId = async (options) => {
     }
 };
 
+const findStocksComponentIds = async (options) => {
+    logger.debug({
+        id: options.reqId
+    },"will be returning stocks for idcmps:", options.cmpIds);
+    
+    let sql = `SELECT * from store.stock WHERE idcmp = ${options.cmpIds[0]}`;
+    for (let index = 1; index < options.cmpIds.length; index++) {
+        const cmpId = options.cmpIds[index];
+        sql += ` OR idcmp = ${cmpId}`
+    }
+
+    let result;
+    try {
+        const [rows, fields] = await db.execute(sql, []);
+        result = rows;
+
+    } catch (e) {
+        // TODO return error
+        logger.error(e);
+        result = e;
+    } finally {
+        return result;
+    }
+};
+
 const deactivate = async (id) => {
     logger.debug("will be returning all sites now...");
 
@@ -444,6 +469,7 @@ module.exports = {
     sellProductTx,
     findOne,
     findOneByComponentId,
+    findStocksComponentIds,
     getAvailableProductsForStockId,
     createNewStockIfRequired
     /*create,
