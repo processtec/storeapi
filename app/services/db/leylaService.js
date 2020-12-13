@@ -6,13 +6,14 @@
 const _ = require("lodash");
 // const logger = require('../../../lib/logger/bunyanLogger').logger('');
 const { sql, db, initialize } = require("../../../lib/db/leylaDB");
-const { SConst } = require("../../constants/storeConstants");
+const config = require('config');
 const moment = require("moment");
 const { query } = require("express");
 
 const InventoryID = 63;
 const InventorySupplierID = 173;
 const databaseName = "EData3_ProcessTec"; // EData3_ProcessTec , EData3_Test
+const isWriteToPTEAllowed = config.get('LEYLA.PTE_WRITE_ALLOWED');
 
 const getComponentDetails = async (options) => {
  try {
@@ -277,11 +278,11 @@ const updateInventory = async (options) => {
 };
 
 const updateInventoryItemsTx = async (options, existingInventory) => {
-  if (!SConst.PTE.IS_WRITE_BACK_ALLOWED) {
+  if (!isWriteToPTEAllowed) {
     console.log('Wrtie to PTE is disabled temporarily.');
     return;
   }
-  
+
   try {
     const quantityInStock =
       existingInventory.QuantityInStock - options.quantity;
@@ -305,7 +306,7 @@ const updateInventoryItemsTx = async (options, existingInventory) => {
 };
 
 const updateInventoryLogTx = async (options, existingInventory) => {
-  if (!SConst.PTE.IS_WRITE_BACK_ALLOWED) {
+  if (!isWriteToPTEAllowed) {
     console.log('Wrtie to PTE is disabled temporarily.');
     return;
   }
@@ -343,7 +344,7 @@ const updateInventoryLogTx = async (options, existingInventory) => {
 };
 
 const addComponentsToOC = async (options) => {
-  if (!SConst.PTE.IS_WRITE_BACK_ALLOWED) {
+  if (!isWriteToPTEAllowed) {
     console.log('Wrtie to PTE is disabled temporarily.');
     return;
   }

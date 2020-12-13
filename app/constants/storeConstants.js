@@ -2,9 +2,6 @@
 'use strict';
 
 const storeConst = {
-    PTE: {
-        IS_WRITE_BACK_ALLOWED: false
-    },
     PRODUCT: {
         STATUS: {
             ORDERED: 0, // ordered but not received.

@@ -9,11 +9,11 @@ const {
 const sender = require('../../../lib/util/responseSender');
 const service = require('../../services/db/reportService');
 const errorRes = require('../../../lib/error/storeError');
-const expectedRole = SConst.USER.ROLES.ENGINEER;
 const {
     SConst
 } = require('../../constants/storeConstants');
 const logger = require('../../../lib/logger/bunyanLogger').logger('');
+const expectedRole = SConst.USER.ROLES.ENGINEER;
 
 // returns all carts which has done a shipment
 const getAllCartsReport = async (req, res) => {
@@ -58,17 +58,17 @@ const getCartShipmentsReport = async (req, res) => {
 
     const userName = req.decoded.username;
     const userId = req.decoded.id;
-    const cart = await service.getCartShipmentsById({
+    const shipments = await service.getCartShipmentsById({
         userId: userId,
         userName: userName,
         cartId: cartId,
         reqId: req.id
     });
-    return res.send(cart);
+    return res.send(shipments);
 };
 
 // retuns a shipment details for a cart
-const getCartShipmentReportDetails = async () => {
+const getCartShipmentReportDetails = async (req, res) => {
     logger.info({
         id: req.id,
         cartId: req.params.id
@@ -88,13 +88,13 @@ const getCartShipmentReportDetails = async () => {
 
     const userName = req.decoded.username;
     const userId = req.decoded.id;
-    const cart = await service.getCartShipmentDetails({
+    const shipment = await service.getCartShipmentDetails({
         userId: userId,
         userName: userName,
         shipmentId: shipmentId,
         reqId: req.id
     });
-    return res.send(cart);
+    return res.send(shipment);
 };
 
 module.exports = {

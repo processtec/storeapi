@@ -12,7 +12,7 @@ const oc = require('../useCases/oc/ocController');
 const session = require('../useCases/session/sessionController');
 const cart = require('../useCases/cart/cartController');
 const location = require('../useCases/location/locationController');
-const report = require('../useCases/cart/cartController');
+const report = require('../useCases/report/reportController');
 
 const register = (options) => {
   const { router } = options;
@@ -89,8 +89,8 @@ const register = (options) => {
 
   // REPORTS
   router.get('/report/cart/all', report.getAllCartsReport);
-  router.get('/report/cart/:id', report.getCartShipmentsReport);
   router.get('/report/cart/shipment/:id', report.getCartShipmentReportDetails);
+  router.get('/report/cart/:id', report.getCartShipmentsReport);
 };
 
 module.exports = {
