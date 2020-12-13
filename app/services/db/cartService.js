@@ -13,6 +13,7 @@ const { SConst } = require("../../constants/storeConstants");
 const stockService = require("./stockService");
 const leylaService = require("./leylaService");
 const ocService = require("../search/ocSearchService");
+const reportService = require('./reportService');
 
 const getById = async (options) => {
   const cart = await getCartById(options);
@@ -23,8 +24,14 @@ const getById = async (options) => {
   const stocks = await getDetailedStocksForACart({
     idcart: cart[0].idcart,
   });
-
   cart[0].stocks = stocks;
+
+  const shipmentReportId =  await reportService.getCartShipmentTxIdFromCartId(options);
+  if (Array.isArray(shipmentReportId) && shipmentReportId.length > 0) { 
+    cart[0].shipmentReportId = shipmentReportId[0].idcart_tx;
+  }
+
+
   return cart[0];
 };
 
