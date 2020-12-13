@@ -13,10 +13,6 @@ const { SConst } = require("../../constants/storeConstants");
 const stockService = require("./stockService");
 const leylaService = require("./leylaService");
 const ocService = require("../search/ocSearchService");
-// const { checkout } = require("../../useCases/cart/cartController");
-const { Table } = require("mssql");
-const { HEBREW } = require("mysql2/lib/constants/charsets");
-const { result } = require("lodash");
 
 const getById = async (options) => {
   const cart = await getCartById(options);
@@ -367,7 +363,7 @@ const checkoutACart = async (options) => {
       // NEW PTE sync step:
       // TODO ideally controller should do that instead of service calling a service or better if Manager does that.
       //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
-      /* TODO tmp off -- enable me
+      
       await leylaService.updateInventory({
         availablequantity: availablequantity,
         ComponentID: stock.details.idcmp,
@@ -385,7 +381,7 @@ const checkoutACart = async (options) => {
         CurrencyConversionRate: 1,
         SupplierID: products[0].idsupplier,
         jobId: orderConfirmaion[0]._source.jobid,
-      }); */
+      });
     }
 
     /*

@@ -90,7 +90,7 @@ const register = (options) => {
   // REPORTS
   router.get('/report/cart/all', report.getAllCartsReport);
   router.get('/report/cart/:id', report.getCartShipmentsReport);
-  router.get('/report/cart/:id/shipment/:id', report.getCartShipmentReportDetails);
+  router.get('/report/cart/shipment/:id', report.getCartShipmentReportDetails);
 };
 
 module.exports = {

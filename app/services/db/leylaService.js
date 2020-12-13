@@ -277,6 +277,11 @@ const updateInventory = async (options) => {
 };
 
 const updateInventoryItemsTx = async (options, existingInventory) => {
+  if (!SConst.PTE.IS_WRITE_BACK_ALLOWED) {
+    console.log('Wrtie to PTE is disabled temporarily.');
+    return;
+  }
+  
   try {
     const quantityInStock =
       existingInventory.QuantityInStock - options.quantity;
@@ -300,6 +305,11 @@ const updateInventoryItemsTx = async (options, existingInventory) => {
 };
 
 const updateInventoryLogTx = async (options, existingInventory) => {
+  if (!SConst.PTE.IS_WRITE_BACK_ALLOWED) {
+    console.log('Wrtie to PTE is disabled temporarily.');
+    return;
+  }
+
   try {
     const quantityInStock =
       existingInventory.QuantityInStock - options.quantity;
@@ -333,6 +343,11 @@ const updateInventoryLogTx = async (options, existingInventory) => {
 };
 
 const addComponentsToOC = async (options) => {
+  if (!SConst.PTE.IS_WRITE_BACK_ALLOWED) {
+    console.log('Wrtie to PTE is disabled temporarily.');
+    return;
+  }
+
   try {
     const request = db
       .request()
