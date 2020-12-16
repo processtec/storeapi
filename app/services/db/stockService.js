@@ -155,7 +155,7 @@ const addNewProduct = async (connection, options) => {
 
     let result;
     try {
-        const [rows, fields] = await connection.query('INSERT INTO product SET idcmp = ?, idsupplier = ?, idvendor = ?, mpin = ?, status = ?, costprice = ?, idpo = ?, idstock = ?, idlocation = ?, PurchaseOrderCode = ?', [options.cmpId, options.idSupplier, options.idVendor, options.mpin, options.status, options.costPrice, options.idPO, options.stock.idstock, options.idLocation, options.PurchaseOrderCode]);
+        const [rows, fields] = await connection.query('INSERT INTO product SET idcmp = ?, idsupplier = ?, idvendor = ?, mpin = ?, status = ?, costprice = ?, saleprice = ?, idpo = ?, idstock = ?, idlocation = ?, PurchaseOrderCode = ?', [options.cmpId, options.idSupplier, options.idVendor, options.mpin, options.status, options.costPrice, options.costPrice, options.idPO, options.stock.idstock, options.idLocation, options.PurchaseOrderCode]);
         result = rows;
         logger.info({
             id: options.reqId,
@@ -181,7 +181,7 @@ const updateStockForAddingProduct = async (connection, options) => {
 
     let result;
     try {
-        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, lastModifiedBy = ? where idstock = ?', [availablequantity, options.lastModifiedBy, options.stock.idstock]);
+        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, lastModifiedBy = ?, price = ?, mfgmodelnumber = ?, idsupplier = ? where idstock = ?', [availablequantity, options.lastModifiedBy, options.costPrice, options.idVendor, options.idVendor, options.stock.idstock]);
         result = rows;
         logger.info({
             id: options.reqId,
