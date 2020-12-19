@@ -320,6 +320,8 @@ const checkout = async (req, res) => {
         return res.send(errorRes("cart id should be an integar!", "path", "stack", "code"));
     }
     const ocId = req.body.ocId;
+    const title = req.body.title;
+    const description = req.body.description;
     const userId = req.decoded.id;
     const userName = req.decoded.username;
     const fName = req.decoded.fName;
@@ -332,7 +334,9 @@ const checkout = async (req, res) => {
         lName: lName,
         cartId: cartId,
         ocId: ocId,
-        reqId: req.id
+        reqId: req.id,
+        title: title,
+        description: description
     });
     // return res.send(result); //TODO parse them before sending
     return sender.send(res, result);
