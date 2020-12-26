@@ -13,7 +13,7 @@ const { SConst } = require("../../constants/storeConstants");
 const stockService = require("./stockService");
 const leylaService = require("./leylaService");
 const ocService = require("../search/ocSearchService");
-const reportService = require('./reportService');
+const reportService = require("./reportService");
 
 const getById = async (options) => {
   const cart = await getCartById(options);
@@ -26,11 +26,12 @@ const getById = async (options) => {
   });
   cart[0].stocks = stocks;
 
-  const shipmentReportId =  await reportService.getCartShipmentTxIdFromCartId(options);
-  if (Array.isArray(shipmentReportId) && shipmentReportId.length > 0) { 
+  const shipmentReportId = await reportService.getCartShipmentTxIdFromCartId(
+    options
+  );
+  if (Array.isArray(shipmentReportId) && shipmentReportId.length > 0) {
     cart[0].shipmentReportId = shipmentReportId[0].idcart_tx;
   }
-
 
   return cart[0];
 };
@@ -223,44 +224,77 @@ const addProductsToCart = async (options) => {
     return {
       errorCode: 420,
       error: {
-          message: 'Bad request: cmpIds must be an array.'
-      }
+        message: "Bad request: cmpIds must be an array.",
+      },
     };
   }
 
   const stocks = await stockService.findStocksComponentIds(options);
+  if (stocks.length > 0) {
+    let result;
+    let sql =
+      "INSERT INTO store.cart_stock (idcart, idstock, quantity, idUser) VALUES ?";
+    let values = [];
+    for (let index = 0; index < stocks.length; index++) {
+      const stock = stocks[index];
+      const value = [
+        options.cartId,
+        stock.idstock,
+        options.quantity,
+        options.idUser,
+      ];
+      values.push(value);
+    }
 
-  let result;
-  let sql = "INSERT INTO store.cart_stock (idcart, idstock, quantity, idUser) VALUES ?";
-  let values = [];
-  for (let index = 0; index < stocks.length; index++) {
-    const stock = stocks[index];
-    const value = [options.cartId, stock.idstock, options.quantity, options.idUser];
-    values.push(value);
+    try {
+      const [rows, fields] = await db.query(sql, [values]);
+      result = rows;
+      logger.info(
+        {
+          id: options.reqId,
+          result: result,
+        },
+        "added products to cart."
+      );
+    } catch (e) {
+      // TODO return custom errors.
+      logger.error(e);
+      result = e;
+    } finally {
+      return result;
+    }
   }
 
-  try {
-    const [
-      rows,
-      fields,
-    ] = await db.query(
-      sql, [values]      
-    );
-    result = rows;
-    logger.info(
-      {
-        id: options.reqId,
-        result: result,
-      },
-      "added products to cart."
-    );
-  } catch (e) {
-    // TODO return custom errors.
-    logger.error(e);
-    result = e;
-  } finally {
-    return result;
+  // get pending cmpIds whose stocks entry is missing.
+  var pendingCmpIds = [];
+  if (stocks.length == 0) {
+    pendingCmpIds = options.cmpIds;
+  } else if (stocks.length < options.cmpIds) {
+    for (let index = 0; index < stocks.length; index++) {
+      const cmpId = stocks[index].idcmp;
+      if (!options.cmpIds.includes(cmpId)) {
+        pendingCmpIds.push(cmpId);
+      }
+    }
+    
   }
+
+  logger.info({
+    pendingCmpIds: pendingCmpIds
+  }, "creating default dummy stocks.");
+  // create stock entry
+  for (let index = 0; index < pendingCmpIds.length; index++) {
+    const cmponentId = pendingCmpIds[index];
+    await createDummyStock({
+      cmpId: cmponentId
+    });
+  }
+  
+  // do above again.
+  if(pendingCmpIds.length > 0) {
+    await addProductsToCart(options);
+  }
+
 };
 
 const addProductToCart = async (options) => {
@@ -360,12 +394,12 @@ const checkoutACart = async (options) => {
     for (let index = 0; index < stocks.length; index++) {
       const stock = stocks[index];
 
-      if(stock.details.availablequantity > 0) {
+      if (stock.details.availablequantity > 0) {
         isThereSomethingToShip = true;
         if (stock.quantity > stock.details.availablequantity) {
           isPartialShipment = true;
           break;
-        }        
+        }
       }
     }
 
@@ -373,16 +407,16 @@ const checkoutACart = async (options) => {
       return {
         errorCode: 428, // Precondition Required
         error: {
-            message: 'No stock present for any product in cart! Try again later.'
-        }
-    }
+          message: "No stock present for any product in cart! Try again later.",
+        },
+      };
     }
 
     options.isPartialShipment = isPartialShipment;
     options.ocDetails = orderConfirmaion[0]._source;
-    
+
     // todo: create an entry in cartTx table for this.
-    const reportCartTx =  await createOrUpdateReportCartTx(connection, options);
+    const reportCartTx = await createOrUpdateReportCartTx(connection, options);
     options.reportCartId = reportCartTx;
     const reportShipmentTx = await createShipmentReport(connection, options);
     options.reportShipmentInsertId = reportShipmentTx;
@@ -392,22 +426,25 @@ const checkoutACart = async (options) => {
       const availablequantity = stock.details.availablequantity; // avaialble quantity for that product in stock table
       const requiredQuantity = stock.quantity; // quantity asked by user in cart
 
-      if(availablequantity < 1 ) {
+      if (availablequantity < 1) {
         // skipping it as we dont have any quantity aailable for this.
-        logger.debug({
-          stock: stock,
-          availablequantity: availablequantity,
-          requiredQuantity: requiredQuantity
-        }, "skipping it as we dont have any quantity aailable for this.");
+        logger.debug(
+          {
+            stock: stock,
+            availablequantity: availablequantity,
+            requiredQuantity: requiredQuantity,
+          },
+          "skipping it as we dont have any quantity aailable for this."
+        );
         continue;
       }
 
       detailedMessage = `Shipping: component: ${stock.details.idcmp}, quantity: ${availablequantity} \n`;
-      
+
       options.availablequantity = availablequantity;
       options.requiredQuantity = requiredQuantity;
       options.stock = stock;
-      //update stock quantity 
+      //update stock quantity
       await updateStockForCartCheckout(connection, {
         availablequantity: availablequantity,
         quantity: requiredQuantity,
@@ -415,15 +452,14 @@ const checkoutACart = async (options) => {
         idstock: stock.idstock,
       });
 
-
       await updateCartToStockWithShipmentDetails(connection, options);
-      
+
       await createShipmentDetailsReport(connection, options);
 
       // NEW PTE sync step:
       // TODO ideally controller should do that instead of service calling a service or better if Manager does that.
       //A1. Decrease the quantity in inventory -> change quantity in InventoryItems add data in InventoryLog,
-      
+
       await leylaService.updateInventory({
         availablequantity: availablequantity,
         ComponentID: stock.details.idcmp,
@@ -545,7 +581,9 @@ const checkoutACart = async (options) => {
     // await createAlertTx(connection, options);
     const message = `${options.userName} checked out a cart with id: ${cart.idcart}`;
     alertService.create({
-      type: isPartialShipment ? SConst.ALERT.TYPE.CHECKOUT_SUCCESS : SConst.ALERT.TYPE.PARTIAL_CHECKOUT_SUCCESS,
+      type: isPartialShipment
+        ? SConst.ALERT.TYPE.CHECKOUT_SUCCESS
+        : SConst.ALERT.TYPE.PARTIAL_CHECKOUT_SUCCESS,
       idUser: options.userId,
       userName: options.userName,
       message: message,
@@ -609,7 +647,7 @@ const deleteProductsAfterSyncWithPTE = async (options, type) => {
     {
       id: options.reqId,
       type: type,
-      ComponentID: options.ComponentID
+      ComponentID: options.ComponentID,
     },
     "Deleting products as someone deleted in PTE inventory directly."
   );
@@ -619,26 +657,39 @@ const deleteProductsAfterSyncWithPTE = async (options, type) => {
     if (type == SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED) {
       const availableQuantity = options.newAvailableQuantity * -1;
       // find products which are available in store
-      const products = await getAvailableProductsForComponentId(options, availableQuantity);
+      const products = await getAvailableProductsForComponentId(
+        options,
+        availableQuantity
+      );
       for (let index = 0; index < products.length; index++) {
-        // mark it PTE available deleted   
-        await markAProductPTEAvailableDeleted(connection, options, products[index]);
+        // mark it PTE available deleted
+        await markAProductPTEAvailableDeleted(
+          connection,
+          options,
+          products[index]
+        );
         detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${products[index].idproduct}\n`;
       }
 
       await updateStockForPTEAvailableDeleted(connection, options);
     } else if (type == SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED) {
       const reorderQuantity = options.newReorderQuantity * -1;
-      const products = await getOrderedProductsForComponentId(options, reorderQuantity);
+      const products = await getOrderedProductsForComponentId(
+        options,
+        reorderQuantity
+      );
       for (let index = 0; index < products.length; index++) {
         // mark it PTE ordered deleted
-        await markAProductPTEOrderedDeleted(connection, options, products[index]);
+        await markAProductPTEOrderedDeleted(
+          connection,
+          options,
+          products[index]
+        );
         detailedMessage = `deleting available component: ${options.ComponentID} and product ID is: ${products[index].idproduct}\n`;
       }
 
       await updateStockForPTEOrderedDeleted(connection, options);
     }
-    
 
     const message = `${options.userName} deleted products in store database during a sync!`;
     alertService.create({
@@ -646,7 +697,7 @@ const deleteProductsAfterSyncWithPTE = async (options, type) => {
       idUser: options.userId,
       userName: options.userName,
       message: message,
-      description: `${message}. \n ${detailedMessage}`
+      description: `${message}. \n ${detailedMessage}`,
     });
 
     await connection.commit();
@@ -666,17 +717,15 @@ Private
 const createOrUpdateReportCartTx = async (connection, options) => {
   const existingCartReport = await getReportCartById(options);
 
-  if (!Array.isArray(existingCartReport) || existingCartReport.length < 1) { 
+  if (!Array.isArray(existingCartReport) || existingCartReport.length < 1) {
     // create cart report
     let result = await createReportCart(connection, options);
     return result;
   } else {
     // update
-  await updateReportCart(connection, options);
+    await updateReportCart(connection, options);
     return existingCartReport[0].idcart_tx;
   }
-
-  
 };
 
 const createReportCart = async (connection, options) => {
@@ -691,13 +740,26 @@ const createReportCart = async (connection, options) => {
 
   let result;
   try {
-    const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
+    const status = options.isPartialShipment
+      ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED
+      : SConst.REPORT_CART.STATUS.COMPLETED;
     const [
       rows,
       fields,
     ] = await connection.query(
       "INSERT INTO store.report_cart_tx SET idcart = ?, description = ?, title = ?, jobname = ?, idOC = ?, costcenterid = ?, fname = ?, lname = ?, status = ?, idUser = ?",
-      [options.cartId, options.description, options.title, options.ocDetails.jobname, options.ocId, options.ocDetails.costcenterid, options.fName, options.lName, status, options.userId]
+      [
+        options.cartId,
+        options.description,
+        options.title,
+        options.ocDetails.jobname,
+        options.ocId,
+        options.ocDetails.costcenterid,
+        options.fName,
+        options.lName,
+        status,
+        options.userId,
+      ]
     );
     result = rows;
     logger.info(
@@ -717,12 +779,14 @@ const createReportCart = async (connection, options) => {
 };
 
 const updateReportCart = async (connection, options) => {
-  const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED;
+  const status = options.isPartialShipment
+    ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED
+    : SConst.REPORT_CART.STATUS.COMPLETED;
 
   logger.debug(
     {
       id: options.reqId,
-      status: status
+      status: status,
     },
     "Updating an existing cart report.",
     options.cartId
@@ -752,13 +816,13 @@ const updateReportCart = async (connection, options) => {
   } finally {
     return result;
   }
-}
+};
 
 const getReportCartById = async (options) => {
   logger.debug(
     {
       id: options.reqId,
-      cartId: options.cartId
+      cartId: options.cartId,
     },
     "Getting a report cart for cartID"
   );
@@ -795,10 +859,12 @@ const createShipmentReport = async (connection, options) => {
     },
     "Creating a new shipment report."
   );
-  
+
   let result;
   try {
-    const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
+    const status = options.isPartialShipment
+      ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED
+      : SConst.REPORT_CART.STATUS.COMPLETED;
     const [
       rows,
       fields,
@@ -830,16 +896,27 @@ const createShipmentDetailsReport = async (connection, options) => {
     },
     "Creating a new shipment report."
   );
-  const backOrderQuantity = options.availablequantity - options.requiredQuantity;
+  const backOrderQuantity =
+    options.availablequantity - options.requiredQuantity;
   let result;
   try {
-    const status = options.isPartialShipment ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED : SConst.REPORT_CART.STATUS.COMPLETED
+    const status = options.isPartialShipment
+      ? SConst.REPORT_CART.STATUS.PARTIAL_COMPLETED
+      : SConst.REPORT_CART.STATUS.COMPLETED;
     const [
       rows,
       fields,
     ] = await connection.query(
       "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?",
-      [options.reportShipmentInsertId, options.stock.idstock, options.requiredQuantity, options.availablequantity, Math.abs(backOrderQuantity), options.stock.details.idcmp, options.stock.details.price]
+      [
+        options.reportShipmentInsertId,
+        options.stock.idstock,
+        options.requiredQuantity,
+        options.availablequantity,
+        Math.abs(backOrderQuantity),
+        options.stock.details.idcmp,
+        options.stock.details.price,
+      ]
     );
     result = rows;
     logger.info(
@@ -899,15 +976,16 @@ const updateStockForPTEAvailableDeleted = async (connection, options) => {
   logger.debug(
     {
       id: options.reqId,
-      options: options
+      options: options,
     },
     "Updating stock available quantity."
   );
-  const newQuantity = options.stock.availablequantity + options.newAvailableQuantity; // newAvailableQuantity is -VE
+  const newQuantity =
+    options.stock.availablequantity + options.newAvailableQuantity; // newAvailableQuantity is -VE
   const availablequantity = newQuantity < 0 ? 0 : newQuantity;
   logger.debug(
     {
-      availablequantity: availablequantity
+      availablequantity: availablequantity,
     },
     "Updating stock availablequantity"
   );
@@ -924,7 +1002,7 @@ const updateStockForPTEAvailableDeleted = async (connection, options) => {
     logger.debug(
       {
         id: options.reqId,
-        options: options
+        options: options,
       },
       "Updated stock available quantity."
     );
@@ -941,15 +1019,16 @@ const updateStockForPTEOrderedDeleted = async (connection, options) => {
   logger.debug(
     {
       id: options.reqId,
-      options: options
+      options: options,
     },
     "Updating stock ordered quantity."
   );
-  const newQuantity = options.stock.orderedquantity + options.newReorderQuantity; // newReorderQuantity is -VE
+  const newQuantity =
+    options.stock.orderedquantity + options.newReorderQuantity; // newReorderQuantity is -VE
   const orderedquantity = newQuantity < 0 ? 0 : newQuantity;
   logger.debug(
     {
-      orderedquantity: orderedquantity
+      orderedquantity: orderedquantity,
     },
     "Updating stock ordered quantity"
   );
@@ -966,7 +1045,7 @@ const updateStockForPTEOrderedDeleted = async (connection, options) => {
     logger.debug(
       {
         id: options.reqId,
-        options: options
+        options: options,
       },
       "Updated stock ordered quantity."
     );
@@ -1104,11 +1183,15 @@ const markAProductSold = async (connection, options, product) => {
   }
 };
 
-const markAProductPTEAvailableDeleted = async (connection, options, product) => {
+const markAProductPTEAvailableDeleted = async (
+  connection,
+  options,
+  product
+) => {
   logger.debug(
     {
       id: options.reqId,
-      product: product
+      product: product,
     },
     "Marking an available product as PTE deleted."
   );
@@ -1120,13 +1203,17 @@ const markAProductPTEAvailableDeleted = async (connection, options, product) => 
       fields,
     ] = await connection.query(
       "UPDATE store.product SET status = ?, lastModifiedBy = ?, isActive = 0 WHERE idproduct = ?",
-      [SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED, options.userName, product.idproduct]
+      [
+        SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED,
+        options.userName,
+        product.idproduct,
+      ]
     );
     result = rows;
     logger.debug(
       {
         id: options.reqId,
-        product: product
+        product: product,
       },
       "Marked an available product as PTE deleted."
     );
@@ -1142,7 +1229,7 @@ const markAProductPTEOrderedDeleted = async (connection, options, product) => {
   logger.debug(
     {
       id: options.reqId,
-      product: product
+      product: product,
     },
     "Marking an ordered product as PTE deleted."
   );
@@ -1154,13 +1241,17 @@ const markAProductPTEOrderedDeleted = async (connection, options, product) => {
       fields,
     ] = await connection.query(
       "UPDATE store.product SET status = ?, lastModifiedBy = ?, isActive = 0 WHERE idproduct = ?",
-      [SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED, options.userName, product.idproduct]
+      [
+        SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED,
+        options.userName,
+        product.idproduct,
+      ]
     );
     result = rows;
     logger.debug(
       {
         id: options.reqId,
-        product: product
+        product: product,
       },
       "Marked an ordered product as PTE deleted."
     );
@@ -1527,7 +1618,7 @@ const getAvailableProductsForComponentId = async (options, limit) => {
   logger.debug(
     {
       id: options.reqId,
-      ComponentID: options.ComponentID
+      ComponentID: options.ComponentID,
     },
     "Fetching available products..."
   );
@@ -1539,17 +1630,13 @@ const getAvailableProductsForComponentId = async (options, limit) => {
       fields,
     ] = await db.execute(
       "SELECT * FROM store.product where idcmp = ? AND status = ? AND isActive = 1 ORDER BY createdOn ASC LIMIT ? OFFSET 0",
-      [
-        options.ComponentID,
-        SConst.PRODUCT.STATUS.AVAILABLE,
-        limit,
-      ]
+      [options.ComponentID, SConst.PRODUCT.STATUS.AVAILABLE, limit]
     );
     result = rows;
     logger.debug(
       {
         id: options.reqId,
-        ComponentID: options.ComponentID
+        ComponentID: options.ComponentID,
       },
       "Fetched available products."
     );
@@ -1566,7 +1653,7 @@ const getOrderedProductsForComponentId = async (options, limit) => {
   logger.debug(
     {
       id: options.reqId,
-      ComponentID: options.ComponentID
+      ComponentID: options.ComponentID,
     },
     "Fetching ordered products..."
   );
@@ -1578,17 +1665,13 @@ const getOrderedProductsForComponentId = async (options, limit) => {
       fields,
     ] = await db.execute(
       "SELECT * FROM store.product where idcmp = ? AND status = ? AND isActive = 1 ORDER BY createdOn ASC LIMIT ? OFFSET 0",
-      [
-        options.ComponentID,
-        SConst.PRODUCT.STATUS.ORDERED,
-        limit,
-      ]
+      [options.ComponentID, SConst.PRODUCT.STATUS.ORDERED, limit]
     );
     result = rows;
     logger.debug(
       {
         id: options.reqId,
-        ComponentID: options.ComponentID
+        ComponentID: options.ComponentID,
       },
       "Fetched ordered products."
     );
@@ -1656,7 +1739,13 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
       fields,
     ] = await connection.query(
       "UPDATE store.cart_stock SET quantity = ?, shippedQuantity = ?,  isActive = ? where idcart = ? AND idstock = ?",
-      [Math.abs(pendingQuantity), shipped, isActive,  options.cartId, options.stock.idstock]
+      [
+        Math.abs(pendingQuantity),
+        shipped,
+        isActive,
+        options.cartId,
+        options.stock.idstock,
+      ]
     );
     result = rows;
     logger.info(
@@ -1675,12 +1764,14 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
 };
 
 const markCartInActiveTx = async (connection, options, isPartialShipment) => {
-  const status = isPartialShipment ? SConst.CART.STATUS.PARTIAL_COMPLETED : SConst.CART.STATUS.COMPLETED;
+  const status = isPartialShipment
+    ? SConst.CART.STATUS.PARTIAL_COMPLETED
+    : SConst.CART.STATUS.COMPLETED;
 
   logger.debug(
     {
       id: options.reqId,
-      status: status
+      status: status,
     },
     "Making cart completed or partial for cartId: ",
     options.cartId
@@ -1710,6 +1801,28 @@ const markCartInActiveTx = async (connection, options, isPartialShipment) => {
   }
 };
 
+const createDummyStock = async (options) => {
+  logger.debug("creating a new default dummy stock item...");
+
+  let result;
+  try {
+      const [rows, fields] = await db.query('INSERT INTO stock SET idcmp = ?, price = 0.00', [options.cmpId]);
+      result = rows;
+      logger.info({
+          id: options.reqId,
+          result: result
+      }, "New Stock created.");
+  } catch (e) {
+      // TODO return custom errors.
+      logger.error(e);
+      throw err;
+  } finally {
+      return {
+          idstock: result.insertId
+      };
+  }
+};
+
 // ====================
 
 module.exports = {
@@ -1725,5 +1838,5 @@ module.exports = {
   modifyProductForCart,
   checkoutACart,
   deleteAProduct,
-  deleteProductsAfterSyncWithPTE
+  deleteProductsAfterSyncWithPTE,
 };
