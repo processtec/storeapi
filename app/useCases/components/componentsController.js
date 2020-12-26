@@ -31,7 +31,12 @@ const getComponent = async (req, res) => {
     // return res.send(component);//TODO parse them before sending
 
     const imagedComponent = leylaImage.addImages(component);
-    return res.send(imagedComponent);//TODO parse them before sending
+    if (Array.isArray(imagedComponent) && imagedComponent.length > 0) {
+        return res.send([imagedComponent[0]]);
+    } else {
+        return res.send([]);
+    }
+    
 };
 
 const getComponents = async (req, res) => {

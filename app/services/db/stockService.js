@@ -81,11 +81,12 @@ const addProductTx = async (options) => {
 
 const addProductsTx = async (products) => {
     const connection = await db.getConnection();
-    await connection.beginTransaction();
+    // await connection.beginTransaction();
 
     try {
         for (let index = 0; index < products.length; index++) {
             const options = products[index];
+            await connection.beginTransaction();
 
             try {
                 const supplierCompany = options.supplier_company || "TODO";
@@ -104,7 +105,9 @@ const addProductsTx = async (products) => {
                     const updateStockResult = await updateStockForOrderingProduct(connection, options);
                 }
         
+                await connection.commit();
             } catch (err) {
+                await connection.rollback();
                 // Throw the error again so others can catch it.
                 throw err;
         
@@ -114,9 +117,9 @@ const addProductsTx = async (products) => {
             
         }
 
-        await connection.commit();
+        // await connection.commit();
     } catch (error) {
-        await connection.rollback();
+        // await connection.rollback();
             // Throw the error again so others can catch it.
         throw err;
     } finally {
@@ -181,7 +184,7 @@ const updateStockForAddingProduct = async (connection, options) => {
 
     let result;
     try {
-        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, lastModifiedBy = ?, price = ?, mfgmodelnumber = ?, idsupplier = ? where idstock = ?', [availablequantity, options.lastModifiedBy, options.costPrice, options.idVendor, options.idVendor, options.stock.idstock]);
+        const [rows, fields] = await connection.query('UPDATE stock SET availablequantity = ?, lastModifiedBy = ?, price = ?, mfgmodelnumber = ?, idsupplier = ? where idstock = ?', [availablequantity, options.lastModifiedBy, options.costPrice, options.idSupplier, options.idVendor, options.stock.idstock]);
         result = rows;
         logger.info({
             id: options.reqId,
@@ -251,7 +254,7 @@ const create = async (connection, options) => {
 
     let result;
     try {
-        const [rows, fields] = await connection.query('INSERT INTO stock SET idcmp = ?', [options.cmpId]);
+        const [rows, fields] = await connection.query('INSERT INTO stock SET idcmp = ?, price = ?, mfgmodelnumber = ?, idsupplier = ?', [options.cmpId, options.costPrice, options.idSupplier, options.idSupplier]);
         result = rows;
         logger.info({
             id: options.reqId,

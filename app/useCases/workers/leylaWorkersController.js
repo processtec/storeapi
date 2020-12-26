@@ -187,13 +187,28 @@ const syncPTEInventory = async () => {
       cmpId: pendingComponent.ComponentID
     });
 
-    if (existingAvailableQuantityInStock < 1) {
+    /*if (existingAvailableQuantityInStock < 1) {
       logger.debug('Creating stock for non available items so that we can add items with 0 quantity in carts.');
+    //  const inventoryDetailsForComponent = await leylaService.getInventoryDetailsForAComponent(
+    //     options
+    //   );
+    //   if (
+    //     !Array.isArray(inventoryDetailsForComponent) ||
+    //     inventoryDetailsForComponent.length == 0
+    //   ) {
+    //     logger.error(
+    //       "what is wrong with inventoryDetailsForComponent! Unable to find its data in PO details table. Cant do anything.",
+    //       inventoryDetailsForComponent
+    //     );
+    //     return storeProducts;
+    //   }
+    //   const item = inventoryDetailsForComponent[0];
+      
       stockService.createNewStockIfRequired({
         reqId: "leylaWorkersController_",
         cmpId: pendingComponent.ComponentID
       });
-    }
+    }*/
 
     const newAvailableQuantityToBeUpdated =
       pendingComponentInventoryDetailsPTE.QuantityInStock -
@@ -271,6 +286,12 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
       `Deleted ${options.newAvailableQuantity} available products from store products :-(.`
     );
   } else {
+    console.log("item: ", item);
+    const product = createPTEToStoreProductMapping({
+      status: SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED,
+      item: item,
+    });
+    storeProducts.push(product);
     // case handeled already where we check for if (existingAvailableQuantityInStock < 1) { in func syncPTEInventory
   }
 

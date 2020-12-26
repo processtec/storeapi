@@ -1655,8 +1655,8 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
       rows,
       fields,
     ] = await connection.query(
-      "UPDATE store.cart_stock SET idstock = ?, quantity = ?, shippedQuantity = ?,  isActive = ? where idcart = ? ",
-      [options.stock.idstock, Math.abs(pendingQuantity), shipped, isActive,  options.cartId]
+      "UPDATE store.cart_stock SET quantity = ?, shippedQuantity = ?,  isActive = ? where idcart = ? AND idstock = ?",
+      [Math.abs(pendingQuantity), shipped, isActive,  options.cartId, options.stock.idstock]
     );
     result = rows;
     logger.info(
