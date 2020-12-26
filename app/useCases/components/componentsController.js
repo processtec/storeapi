@@ -3,6 +3,7 @@
 /*jslint node: true */
 "use strict";
 
+const _ = require("lodash");
 const { componentById, componentsSearched } = require('../../services/search/componentsSearchService');
 const errorRes = require('../../../lib/error/storeError');
 const leylaImage = require('../../../lib/util/leylaImage');
@@ -54,7 +55,8 @@ const getComponents = async (req, res) => {
         q: query
     });
 
-    const imagedComponents = leylaImage.addImages(components);
+    const uniqueComponents = _.uniqBy(components, "_source.componentid");
+    const imagedComponents = leylaImage.addImages(uniqueComponents);
     return res.send(imagedComponents); //TODO parse them before sending
 };
 
