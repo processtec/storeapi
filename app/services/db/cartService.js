@@ -394,12 +394,12 @@ const checkoutACart = async (options) => {
     for (let index = 0; index < stocks.length; index++) {
       const stock = stocks[index];
 
-      if (stock.details.availablequantity > 0) {
-        isThereSomethingToShip = true;
-        if (stock.quantity > stock.details.availablequantity) {
-          isPartialShipment = true;
-          break;
-        }
+      if (!isThereSomethingToShip && stock.details.availablequantity > 0) {
+        isThereSomethingToShip = true;        
+      }
+
+      if (!isPartialShipment && stock.quantity > stock.details.availablequantity) {
+        isPartialShipment = true;
       }
     }
 
@@ -467,7 +467,7 @@ const checkoutACart = async (options) => {
         quantity: requiredQuantity,
         DiscountToCustomer: 0,
         Margin: 0,
-        QuotedPrice: stock.price,
+        QuotedPrice: stock.details.price,
         CostType: 0,
         Miscellaneous: `Added from Store API for cartID: ${options.cartId}, ocId: ${options.ocId}`,
         ToDollarConversion: 0,
@@ -475,7 +475,7 @@ const checkoutACart = async (options) => {
         Shipped: 0,
         CurrencyTypeID: 1,
         CurrencyConversionRate: 1,
-        SupplierID: stock.idsupplier,
+        SupplierID: stock.details.idsupplier,
         jobId: orderConfirmaion[0]._source.jobid,
       });
     }

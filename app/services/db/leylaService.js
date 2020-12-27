@@ -357,7 +357,7 @@ const addComponentsToOC = async (options) => {
       .input("quantity", sql.Int, options.quantity)
       .input("discountToCustomer", sql.Int, options.DiscountToCustomer)
       .input("margin", sql.Int, options.Margin)
-      .input("quotedPrice", sql.Int, options.QuotedPrice)
+      .input("quotedPrice", sql.Int, options.QuotedPrice || 0)
       .input("costType", sql.Int, options.CostType)
       .input("miscellaneous", sql.VarChar, options.Miscellaneous)
       .input("toDollarConversion", sql.Int, options.ToDollarConversion)
@@ -365,7 +365,7 @@ const addComponentsToOC = async (options) => {
       .input("shipped", sql.Int, options.Shipped)
       .input("currencyTypeID", sql.Int, options.CurrencyTypeID)
       .input("currencyConversionRate", sql.Int, options.CurrencyConversionRate)
-      .input("supplierID", sql.Int, options.SupplierID);
+      .input("supplierID", sql.Int, options.SupplierID || 123);
     const result = await request.query(
       `INSERT INTO [${databaseName}].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES (@orderConfirmationID, @componentID, @quantity, @discountToCustomer ,@margin, @quotedPrice, @costType, @miscellaneous, @toDollarConversion, @itemNumber, @shipped, @currencyTypeID, @currencyConversionRate, @supplierID)`
     );
