@@ -276,25 +276,26 @@ const addProductsToCart = async (options) => {
         pendingCmpIds.push(cmpId);
       }
     }
-    
   }
 
-  logger.info({
-    pendingCmpIds: pendingCmpIds
-  }, "creating default dummy stocks.");
+  logger.info(
+    {
+      pendingCmpIds: pendingCmpIds,
+    },
+    "creating default dummy stocks."
+  );
   // create stock entry
   for (let index = 0; index < pendingCmpIds.length; index++) {
     const cmponentId = pendingCmpIds[index];
     await createDummyStock({
-      cmpId: cmponentId
+      cmpId: cmponentId,
     });
   }
-  
+
   // do above again.
-  if(pendingCmpIds.length > 0) {
+  if (pendingCmpIds.length > 0) {
     await addProductsToCart(options);
   }
-
 };
 
 const addProductToCart = async (options) => {
@@ -395,10 +396,13 @@ const checkoutACart = async (options) => {
       const stock = stocks[index];
 
       if (!isThereSomethingToShip && stock.details.availablequantity > 0) {
-        isThereSomethingToShip = true;        
+        isThereSomethingToShip = true;
       }
 
-      if (!isPartialShipment && stock.quantity > stock.details.availablequantity) {
+      if (
+        !isPartialShipment &&
+        stock.quantity > stock.details.availablequantity
+      ) {
         isPartialShipment = true;
       }
     }
@@ -896,8 +900,14 @@ const createShipmentDetailsReport = async (connection, options) => {
     },
     "Creating a new shipment report."
   );
-  const backOrderQuantity =
-    options.availablequantity - options.requiredQuantity;
+
+  var backOrderQuantity = 0;
+  var shippedQuantity = options.requiredQuantity;
+  if (options.requiredQuantity > options.availablequantity) {
+    backOrderQuantity = options.availablequantity - options.requiredQuantity;
+    shippedQuantity = options.availablequantity;
+  }
+
   let result;
   try {
     const status = options.isPartialShipment
@@ -912,7 +922,7 @@ const createShipmentDetailsReport = async (connection, options) => {
         options.reportShipmentInsertId,
         options.stock.idstock,
         options.requiredQuantity,
-        options.availablequantity,
+        shippedQuantity,
         Math.abs(backOrderQuantity),
         options.stock.details.idcmp,
         options.stock.details.price,
@@ -1521,9 +1531,10 @@ const getStocksForCartId = async (options) => {
     const [
       rows,
       fields,
-    ] = await db.execute("SELECT * FROM store.cart_stock where idcart = ?", [
-      options.idcart,
-    ]);
+    ] = await db.execute(
+      "SELECT * FROM store.cart_stock where idcart = ? and isActive = 1",
+      [options.idcart]
+    );
     result = rows;
     logger.info(
       {
@@ -1806,20 +1817,28 @@ const createDummyStock = async (options) => {
 
   let result;
   try {
-      const [rows, fields] = await db.query('INSERT INTO stock SET idcmp = ?, price = 0.00', [options.cmpId]);
-      result = rows;
-      logger.info({
-          id: options.reqId,
-          result: result
-      }, "New Stock created.");
+    const [
+      rows,
+      fields,
+    ] = await db.query("INSERT INTO stock SET idcmp = ?, price = 0.00", [
+      options.cmpId,
+    ]);
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "New Stock created."
+    );
   } catch (e) {
-      // TODO return custom errors.
-      logger.error(e);
-      throw err;
+    // TODO return custom errors.
+    logger.error(e);
+    throw err;
   } finally {
-      return {
-          idstock: result.insertId
-      };
+    return {
+      idstock: result.insertId,
+    };
   }
 };
 
