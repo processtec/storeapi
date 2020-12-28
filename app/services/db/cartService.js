@@ -1738,8 +1738,12 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
     options.cartId
   );
 
-  const shipped = options.availablequantity;
-  const pendingQuantity = options.availablequantity - options.requiredQuantity;
+  let shipped = options.requiredQuantity;
+  let pendingQuantity = 0;
+  if (options.requiredQuantity > options.availablequantity) {
+    shippedQuantity = options.availablequantity;
+    pendingQuantity = options.requiredQuantity - options.availablequantity;
+  }
   const isPartialShipment = pendingQuantity < 0;
   const isActive = isPartialShipment ? 1 : 0; // if not partial that means we are done with this.
 
