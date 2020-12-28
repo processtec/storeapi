@@ -70,6 +70,7 @@ const addProductTx = async (options) => {
   } catch (err) {
     await connection.rollback();
     // Throw the error again so others can catch it.
+    logger.error(err);
     throw err;
   } finally {
     connection.release();
@@ -112,6 +113,7 @@ const addProductsTx = async (products) => {
         await connection.commit();
       } catch (err) {
         await connection.rollback();
+        logger.error(err);
         // Throw the error again so others can catch it.
         throw err;
       } finally {
@@ -123,6 +125,7 @@ const addProductsTx = async (products) => {
   } catch (error) {
     // await connection.rollback();
     // Throw the error again so others can catch it.
+    logger.error(error);
     throw err;
   } finally {
     connection.release();

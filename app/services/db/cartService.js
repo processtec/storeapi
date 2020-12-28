@@ -266,7 +266,7 @@ const addProductsToCart = async (options) => {
   }
 
   // get pending cmpIds whose stocks entry is missing.
-  var pendingCmpIds = [];
+  let pendingCmpIds = [];
   if (stocks.length == 0) {
     pendingCmpIds = options.cmpIds;
   } else if (stocks.length < options.cmpIds) {
@@ -901,8 +901,8 @@ const createShipmentDetailsReport = async (connection, options) => {
     "Creating a new shipment report."
   );
 
-  var backOrderQuantity = 0;
-  var shippedQuantity = options.requiredQuantity;
+  let backOrderQuantity = 0;
+  let shippedQuantity = options.requiredQuantity;
   if (options.requiredQuantity > options.availablequantity) {
     backOrderQuantity = options.availablequantity - options.requiredQuantity;
     shippedQuantity = options.availablequantity;
