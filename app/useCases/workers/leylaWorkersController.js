@@ -47,11 +47,11 @@ const productSyncWorkerStart = async () => {
 };
 
 const createStoreProductsFromLeylaInventory = (leylaInventory) => {
-  var storeProducts = [];
+  let storeProducts = [];
   const uniqueInventory = _.uniqBy(leylaInventory, "ComponentID"); // _.uniq(leylaInventory, x => x.ComponentID);
   for (let i = 0; i < uniqueInventory.length; i++) {
     const item = uniqueInventory[i];
-    
+
     for (let index = 0; index < item.QuantityInStock; index++) {
       /*const product = {
         cmpId: item.ComponentID,
@@ -184,7 +184,7 @@ const syncPTEInventory = async () => {
 
     // TODO make this component active in ES.
     await componentSearchService.markComponentActive({
-      cmpId: pendingComponent.ComponentID
+      cmpId: pendingComponent.ComponentID,
     });
 
     /*if (existingAvailableQuantityInStock < 1) {
@@ -226,10 +226,10 @@ const syncPTEInventory = async () => {
         ComponentID: pendingComponent.ComponentID,
         newAvailableQuantity: newAvailableQuantityToBeUpdated,
         newReorderQuantity: newReorderQuantityToBeUpdated,
-        stock: stocks[0]
+        stock: stocks[0],
       }
     );
-    
+
     await stockService.addProductsTx(productsToBeStoredInStore);
     logger.debug(
       `Added ComponentID: ${pendingComponent.ComponentID} ###########################################\n\n`
@@ -237,13 +237,14 @@ const syncPTEInventory = async () => {
   }
 
   if (pendingComponentsInPTEInventory.length > 0) {
-    logger.debug('Just completed an Inventory sync cycle. Adding a timestamp for it.');
+    logger.debug(
+      "Just completed an Inventory sync cycle. Adding a timestamp for it."
+    );
     // then store the timespamp in inventorySync table.
     await addToProductSync();
   } else {
-    logger.debug('There is nothing to sync for PTE inventory.');
+    logger.debug("There is nothing to sync for PTE inventory.");
   }
-  
 };
 
 const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
@@ -281,7 +282,10 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
       storeProducts.push(product);
     }
   } else if (options.newAvailableQuantity < 0) {
-    await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED);
+    await cartService.deleteProductsAfterSyncWithPTE(
+      options,
+      SConst.PRODUCT.STATUS.PTE_AVAILABLE_DELETED
+    );
     logger.debug(
       `Deleted ${options.newAvailableQuantity} available products from store products :-(.`
     );
@@ -304,7 +308,10 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
       storeProducts.push(product);
     }
   } else if (options.newReorderQuantity < 0) {
-    await cartService.deleteProductsAfterSyncWithPTE(options, SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED);
+    await cartService.deleteProductsAfterSyncWithPTE(
+      options,
+      SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED
+    );
     logger.debug(
       `Deleted ${options.newAvailableQuantity} reordered products from store products this could be they are available now.`
     );
