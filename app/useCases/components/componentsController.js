@@ -4,60 +4,70 @@
 "use strict";
 
 const _ = require("lodash");
-const { componentById, componentsSearched } = require('../../services/search/componentsSearchService');
-const errorRes = require('../../../lib/error/storeError');
-const leylaImage = require('../../../lib/util/leylaImage');
-
 const {
-    SConst
-} = require('../../constants/storeConstants');
-const { result } = require('lodash');
+  componentById,
+  componentsSearched,
+} = require("../../services/search/componentsSearchService");
+const errorRes = require("../../../lib/error/storeError");
+const leylaImage = require("../../../lib/util/leylaImage");
 
-const logger = require('../../../lib/logger/bunyanLogger').logger('');
+const { SConst } = require("../../constants/storeConstants");
+const { result } = require("lodash");
+
+const logger = require("../../../lib/logger/bunyanLogger").logger("");
 
 const getComponent = async (req, res) => {
-    logger.info({
-        id: req.id,
-        cartId: req.params.id
-    }, "Get component called.");
-    const cmpId = Number(req.params.id);
-    if (!Number.isInteger(cmpId)) {
-        return res.send(errorRes("component id should be an integar!", "path", "stack", "code"));
-    }
+  logger.info(
+    {
+      id: req.id,
+      cartId: req.params.id,
+    },
+    "Get component called."
+  );
+  const cmpId = Number(req.params.id);
+  if (!Number.isInteger(cmpId)) {
+    return res.send(
+      errorRes("component id should be an integar!", "path", "stack", "code")
+    );
+  }
 
-    const component = await componentById({
-        reqId: req.id,
-        cmpId: cmpId
-    });
-    // return res.send(component);//TODO parse them before sending
+  const component = await componentById({
+    reqId: req.id,
+    cmpId: cmpId,
+  });
+  // return res.send(component);//TODO parse them before sending
 
-    const imagedComponent = leylaImage.addImages(component);
-    if (Array.isArray(imagedComponent) && imagedComponent.length > 0) {
-        return res.send([imagedComponent[0]]);
-    } else {
-        return res.send([]);
-    }
-    
+  const imagedComponent = leylaImage.addImages(component);
+  if (Array.isArray(imagedComponent) && imagedComponent.length > 0) {
+    return res.send([imagedComponent[0]]);
+  } else {
+    return res.send([]);
+  }
 };
 
 const getComponents = async (req, res) => {
-    logger.info({
-        id: req.id,
-        query: req.query
-    }, "GET components by query.");
-    const query = req.query.q
-    if (query.length < 3) {
-        return res.send(errorRes("query should have at least 3 chars!", "path", "stack", "code"));
-    }
+  logger.info(
+    {
+      id: req.id,
+      query: req.query,
+    },
+    "GET components by query."
+  );
+  const query = req.query.q;
+  if (query.length < 3) {
+    return res.send(
+      errorRes("query should have at least 3 chars!", "path", "stack", "code")
+    );
+  }
 
-    const components = await componentsSearched({
-        reqId: req.id,
-        q: query
-    });
+  const components = await componentsSearched({
+    reqId: req.id,
+    q: query,
+  });
 
-    const uniqueComponents = _.uniqBy(components, "_source.componentid");
-    const imagedComponents = leylaImage.addImages(uniqueComponents);
-    return res.send(imagedComponents); //TODO parse them before sending
+  const uniqueComponents = _.uniqBy(components, "_source.componentid");
+  const imagedComponents = leylaImage.addImages(uniqueComponents);
+  return res.send(imagedComponents); //TODO parse them before sending
 };
 
 /*
@@ -113,6 +123,6 @@ const getBasePath = (path) => {
 };*/
 
 module.exports = {
-    getComponent,
-    getComponents
+  getComponent,
+  getComponents,
 };
