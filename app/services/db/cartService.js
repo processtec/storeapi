@@ -873,8 +873,16 @@ const createShipmentReport = async (connection, options) => {
       rows,
       fields,
     ] = await connection.query(
-      "INSERT INTO store.report_shipment SET idcart_tx = ?, status = ?, title = ?, description = ?",
-      [options.reportCartId, status, options.title, options.description]
+      "INSERT INTO store.report_shipment SET idcart_tx = ?, status = ?, title = ?, description = ?, projectSiteAddress =  ?, orderConfirmationCode = ?, customerReferenceNumber = ?",
+      [
+        options.reportCartId,
+        status,
+        options.title,
+        options.description,
+        options.ocDetails.projectsiteaddress,
+        options.ocDetails.orderconfirmationcode,
+        options.ocDetails.customerreferencenumber,
+      ]
     );
     result = rows;
     logger.info(
