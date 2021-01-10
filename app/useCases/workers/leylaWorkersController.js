@@ -28,6 +28,9 @@ const productSyncWorkerStart = async () => {
   const lastTimeStamp = await service.lastProductSyncTimeStamp();
   if (lastTimeStamp === null) {
     //This is first time, syncing all.
+    logger.debug(
+      "This is first time sync for Inventory from Leyla, syncing all."
+    );
     const leylaInventory = await leylaService.getAllInventory();
     // TODO for each sync to store db products and stocks table
     const storeProductsFromLeyla = createStoreProductsFromLeylaInventory(
