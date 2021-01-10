@@ -24,7 +24,7 @@ const getCarts = async (options) => {
       rows,
       fields,
     ] = await db.execute(
-      "SELECT * FROM store.report_cart_tx where status <> ?",
+      "SELECT * FROM store.report_cart_tx where status <> ? ORDER BY createdOn DESC",
       [SConst.REPORT_CART.STATUS.DELETED]
     );
     result = rows;
@@ -133,7 +133,7 @@ const getCartShipmentTxIdFromCartId = async (options) => {
     options.userName
   );
   let result;
-  
+
   try {
     const [
       rows,
@@ -159,11 +159,9 @@ const getCartShipmentTxIdFromCartId = async (options) => {
   }
 };
 
-
-
 module.exports = {
   getCarts,
   getCartShipmentsById,
   getCartShipmentDetails,
-  getCartShipmentTxIdFromCartId
+  getCartShipmentTxIdFromCartId,
 };
