@@ -925,7 +925,7 @@ const createShipmentDetailsReport = async (connection, options) => {
       rows,
       fields,
     ] = await connection.query(
-      "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?",
+      "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?, cmpDescription = ?, cmpModel = ?",
       [
         options.reportShipmentInsertId,
         options.stock.idstock,
@@ -934,6 +934,8 @@ const createShipmentDetailsReport = async (connection, options) => {
         Math.abs(backOrderQuantity),
         options.stock.details.idcmp,
         options.stock.details.price,
+        options.stock.details.componentDetails.categorydescription,
+        options.stock.details.componentDetails.mfgmodelnumber,
       ]
     );
     result = rows;
@@ -1486,6 +1488,7 @@ const getDetailedStocksForACart = async (options) => {
     });
 
     stocks[i].details = stockDetails[0];
+    stocks[i].details.componentDetails = stockImages[0]._source;
     stocks[i].details.images = leylaImage.getImages(stockImages[0]._source);
   }
 
