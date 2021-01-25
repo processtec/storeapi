@@ -925,7 +925,7 @@ const createShipmentDetailsReport = async (connection, options) => {
       rows,
       fields,
     ] = await connection.query(
-      "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?, cmpDescription = ?, cmpModel = ?",
+      "INSERT INTO store.report_shipment_details SET idreport_shipment = ?, idstock = ?, quantity = ?, shippedQuantity = ?, backOrderQuantity = ?, status = 1, idcmp = ?, saleprice = ?, cmpDescription = ?, cmpModel = ?, cmpImagePath = ?, cmpImageUrl = ?",
       [
         options.reportShipmentInsertId,
         options.stock.idstock,
@@ -936,6 +936,8 @@ const createShipmentDetailsReport = async (connection, options) => {
         options.stock.details.price,
         options.stock.details.componentDetails.categorydescription,
         options.stock.details.componentDetails.mfgmodelnumber,
+        options.stock.details.componentDetails.path,
+        options.stock.details.componentDetails.url,
       ]
     );
     result = rows;
