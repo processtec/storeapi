@@ -126,8 +126,48 @@ const getCartShipmentReportDetails = async (req, res) => {
   return res.send(shipment);
 };
 
+const modifyCartShipmentReportDetails = async (req, res) => {
+  logger.info(
+    {
+      id: req.id,
+      cartId: req.params.id,
+    },
+    "Get carts shipment details called."
+  );
+  const decodedRole = req.decoded.role;
+  if (!isRoleValid(expectedRole, decodedRole)) {
+    logger.error(
+      {
+        error: "forbidden",
+      },
+      "user not allowed."
+    );
+    return sender.send(res, forbiddenResult);
+  }
+
+  const shipmentReportId = Number(req.params.id);
+  if (!Number.isInteger(shipmentReportId)) {
+    return res.send(
+      errorRes("shipment id should be an Integer!", "path", "stack", "code")
+    );
+  }
+
+  const userName = req.decoded.username;
+  const userId = req.decoded.id;
+  let updateResult = await service.updateCartShipmentTxIdFromCartId({
+    userId: userId,
+    userName: userName,
+    shipmentReportId: shipmentReportId,
+    shipment: req.body.shipment,
+    reqId: req.id,
+  });
+
+  return res.send(updateResult);
+};
+
 module.exports = {
   getAllCartsReport,
   getCartShipmentsReport,
   getCartShipmentReportDetails,
+  modifyCartShipmentReportDetails,
 };

@@ -88,6 +88,32 @@ const getCartShipmentDetails = async (options) => {
     "fetching cart's shipment details for user:",
     options.userName
   );
+
+  let shipment = await findCartShipmentDetails(options);
+  for (let index = 0; index < shipment.length; index++) {
+    const ship = shipment[index];
+    const existingComponentAddition = await findComponentAdditionsByComponent(
+      ship
+    );
+    if (
+      Array.isArray(existingComponentAddition) &&
+      existingComponentAddition.length > 0
+    ) {
+      ship.reportDescription = existingComponentAddition[0].reportDescription;
+    }
+  }
+
+  return shipment;
+};
+
+const findCartShipmentDetails = async (options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "fetching cart's shipment details for user:",
+    options.userName
+  );
   let result;
   // "SELECT * FROM store.report_shipment where idUser = ? AND idcart_tx = ? AND status <>"
   // use iduser for using specific user only.
@@ -159,9 +185,206 @@ const getCartShipmentTxIdFromCartId = async (options) => {
   }
 };
 
+const updateCartShipmentTxIdFromCartId = async (options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "updateCartShipmentTxIdFromCartId:",
+    options.userName
+  );
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+  let result = true;
+  const shipment = options.shipment || [];
+  try {
+    for (let index = 0; index < shipment.length; index++) {
+      const ship = shipment[index];
+      await updateLineItemCartShipmentTxIdFromCartId(
+        connection,
+        ship,
+        options.reqId
+      );
+      const existingComponentAddition = await findComponentAdditionsByComponent(
+        ship,
+        options.reqId
+      );
+      if (
+        !Array.isArray(existingComponentAddition) ||
+        existingComponentAddition.length < 1
+      ) {
+        // create cart report
+        await insertComponentAdditions(connection, ship, options.reqId);
+      } else {
+        // update
+        await updateComponentAdditions(connection, ship, options.reqId);
+      }
+    }
+    await connection.commit();
+  } catch (e) {
+    await connection.rollback();
+    // TODO return custom errors.
+    logger.error(e);
+    result = {
+      error: e,
+    };
+  } finally {
+    connection.release();
+    return result;
+  }
+};
+
+// PRIVATE
+const updateLineItemCartShipmentTxIdFromCartId = async (
+  connection,
+  options,
+  reqId
+) => {
+  logger.debug(
+    {
+      id: reqId,
+    },
+    "updating cart's report tx id:"
+  );
+  let result;
+
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE store.report_shipment_details SET lineitem = ? where idcartTx = ? AND idreport_shipment = ? AND status <> ?",
+      [
+        options.lineItem,
+        options.idcartTx,
+        options.idreport_shipment,
+        SConst.REPORT_CART.STATUS.DELETED,
+      ]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: reqId,
+        result: result,
+      },
+      "updating  cart's report tx id for lineitem."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
+const findComponentAdditionsByComponent = async (options, reqId) => {
+  logger.debug(
+    {
+      id: reqId,
+    },
+    "finding from ComponentAdditions:"
+  );
+  let result;
+
+  try {
+    const [
+      rows,
+      fields,
+    ] = await db.execute(
+      "SELECT * FROM store.componentAdditions WHERE idcmp = ?",
+      [options.idcmp]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: reqId,
+        result: result,
+      },
+      "found from ComponentAdditions."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
+const insertComponentAdditions = async (connection, options) => {
+  logger.debug(
+    {
+      id: options.reqId,
+    },
+    "Inserting into ComponentAdditions:",
+    options.userName
+  );
+  let result;
+
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "INSERT INTO store.componentAdditions SET idcmp = ?, reportDescription = ?",
+      [options.idcmp, options.reportDescription]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: options.reqId,
+        result: result,
+      },
+      "Inserted into ComponentAdditions."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
+const updateComponentAdditions = async (connection, options, reqId) => {
+  logger.debug(
+    {
+      id: reqId,
+    },
+    "updating ComponentAdditions:"
+  );
+  let result;
+
+  try {
+    const [
+      rows,
+      fields,
+    ] = await connection.query(
+      "UPDATE store.componentAdditions SET reportDescription = ? where idcmp = ?",
+      [options.reportDescription, options.idcmp]
+    );
+    result = rows;
+    logger.info(
+      {
+        id: reqId,
+        result: result,
+      },
+      "updated ComponentAdditions."
+    );
+  } catch (e) {
+    // TODO return custom errors.
+    logger.error(e);
+    result = e;
+  } finally {
+    return result;
+  }
+};
+
 module.exports = {
   getCarts,
   getCartShipmentsById,
   getCartShipmentDetails,
   getCartShipmentTxIdFromCartId,
+  updateCartShipmentTxIdFromCartId,
 };
