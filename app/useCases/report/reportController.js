@@ -119,8 +119,8 @@ const getCartShipmentReportDetails = async (req, res) => {
   for (let index = 0; index < shipment.length; index++) {
     const shipRecord = shipment[index];
     const componentImage = leylaImage.getImages({
-      path: shipRecord.cmpImagePath,
-      url: shipRecord.cmpImageUrl,
+      path: shipRecord.cmpImagePath || "",
+      url: shipRecord.cmpImageUrl || "",
     });
     shipRecord.componentImage = componentImage;
   }
