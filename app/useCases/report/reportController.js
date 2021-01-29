@@ -115,6 +115,7 @@ const getCartShipmentReportDetails = async (req, res) => {
     reqId: req.id,
   });
 
+  logger.debug("shipment received in controller.");
   for (let index = 0; index < shipment.length; index++) {
     const shipRecord = shipment[index];
     const componentImage = leylaImage.getImages({
@@ -123,6 +124,13 @@ const getCartShipmentReportDetails = async (req, res) => {
     });
     shipRecord.componentImage = componentImage;
   }
+
+  logger.debug(
+    {
+      shipment: shipment,
+    },
+    "Controller sending shipment"
+  );
   return res.send(shipment);
 };
 

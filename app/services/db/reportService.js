@@ -99,9 +99,22 @@ const getCartShipmentDetails = async (options) => {
       Array.isArray(existingComponentAddition) &&
       existingComponentAddition.length > 0
     ) {
+      logger.debug(
+        {
+          reportDescription: existingComponentAddition[0].reportDescription,
+        },
+        "fadding reportDescription to shipment"
+      );
       ship.reportDescription = existingComponentAddition[0].reportDescription;
     }
   }
+
+  logger.debug(
+    {
+      shipment: shipment,
+    },
+    "Final shipment sending as"
+  );
 
   return shipment;
 };
