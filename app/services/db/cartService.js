@@ -95,7 +95,7 @@ const create = async (options) => {
       rows,
       fields,
     ] = await db.query(
-      "INSERT INTO store.cart SET idUser = ?, status = ?, fname = ?, lname = ?, idpo = ?, idOC = ?, jobname = ?, costcenterid = ?, title = ?, description = ?",
+      "INSERT INTO store.cart SET idUser = ?, status = ?, fname = ?, lname = ?, idpo = ?, idOC = ?, jobname = ?, costcenterid = ?, title = ?, description = ?, customerreferencenumber = ?",
       [
         options.idUser,
         SConst.CART.STATUS.AVAILABLE,
@@ -107,6 +107,7 @@ const create = async (options) => {
         options.costcenterid,
         options.title,
         options.description,
+        options.customerreferencenumber,
       ]
     );
     result = rows;
