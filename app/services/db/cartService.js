@@ -752,7 +752,7 @@ const createReportCart = async (connection, options) => {
       rows,
       fields,
     ] = await connection.query(
-      "INSERT INTO store.report_cart_tx SET idcart = ?, description = ?, title = ?, jobname = ?, idOC = ?, costcenterid = ?, fname = ?, lname = ?, status = ?, idUser = ?",
+      "INSERT INTO store.report_cart_tx SET idcart = ?, description = ?, title = ?, jobname = ?, idOC = ?, costcenterid = ?, fname = ?, lname = ?, status = ?, idUser = ?, customerreferencenumber = ?, title_oc = ?",
       [
         options.cartId,
         options.description,
@@ -764,6 +764,8 @@ const createReportCart = async (connection, options) => {
         options.lName,
         status,
         options.userId,
+        options.ocDetails.customerreferencenumber,
+        options.ocDetails.title,
       ]
     );
     result = rows;
