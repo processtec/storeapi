@@ -6,22 +6,22 @@
 const _ = require("lodash");
 // const logger = require('../../../lib/logger/bunyanLogger').logger('');
 const { sql, db, initialize } = require("../../../lib/db/leylaDB");
-const config = require('config');
+const config = require("config");
 const moment = require("moment");
 const { query } = require("express");
 
 const InventoryID = 63;
 const InventorySupplierID = 173;
 const databaseName = "EData3_ProcessTec"; // EData3_ProcessTec , EData3_Test
-const isWriteToPTEAllowed = config.get('LEYLA.PTE_WRITE_ALLOWED');
+const isWriteToPTEAllowed = config.get("LEYLA.PTE_WRITE_ALLOWED");
 
 const getComponentDetails = async (options) => {
- try {
-  console.log("Getting component details...");
+  try {
+    console.log("Getting component details...");
 
-  const request = db.request();
-  const result = await request.query(
-    `
+    const request = db.request();
+    const result = await request.query(
+      `
     SELECT DISTINCT
           Comp.ComponentID,
           Comp.CategoryCode,
@@ -31,6 +31,7 @@ const getComponentDetails = async (options) => {
           manf.CompanyName as CompanyName,
           Comp.ModelID,
           m.MfgModelNumber + ' (' + ${databaseName}.Cmp.ConcatModelConfigurationAbbreviations(Comp.ComponentID, 0) + ')' as MfgModelNumber,
+          m.Variant as Variant,
           isnull(mpn.MfgPartNumber, '') as MfgPartNumber,
           Comp.StockRoomLabel,
           Comp.ElastomerDescription as Elastomers,
@@ -106,18 +107,43 @@ const getComponentDetails = async (options) => {
     
         where Comp.IsActive = 1
      AND Comp.ComponentID = ${options.cmpId}`
-  );
-  // TODO: from above remove --> AND inItems.ComponentID = 7115, 17547
-  // console.log("All inventory: ", result.recordset);
-  return result.recordset;
-} catch (err) {
-  console.error("SQL error", err);
-  return null;
-} finally {
-  // pool1.close();
-}
+    );
+    // TODO: from above remove --> AND inItems.ComponentID = 7115, 17547
+    // console.log("All inventory: ", result.recordset);
+    return sanitizeComponentDetails(result.recordset);
+  } catch (err) {
+    console.error("SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
 };
 
+const sanitizeComponentDetails = (components) => {
+  // if (!component.MfgModelNumber.includes("(0)")) {
+  //   return component;
+  // }
+  if (!Array.isArray(components) || components.length < 1) {
+    return components;
+  }
+
+  const component = components[0];
+  const token = "(0)";
+  if (component.MfgModelNumber.lastIndexOf(token) === -1) {
+    return component;
+  }
+
+  const spilltedArray = component.MfgModelNumber.split(token);
+  if (spilltedArray.length < 2) {
+    return component;
+  }
+
+  const newMfgModelNumber = spilltedArray[0] + "(" + component.Variant + ")";
+  component.MfgModelNumber = newMfgModelNumber;
+
+  components[0] = component;
+  return components;
+};
 
 const getAllInventory = async () => {
   // this query is similar to getInventoryDetailsForAComponent except it doesnt take the component id
@@ -181,7 +207,10 @@ const getAllInventory = async () => {
 
 const getInventoryDetailsForAComponent = async (options) => {
   try {
-    console.log("Getting getInventoryDetailsForAComponent for cmpID: " + options.ComponentID);
+    console.log(
+      "Getting getInventoryDetailsForAComponent for cmpID: " +
+        options.ComponentID
+    );
 
     const request = db.request(); // or: new sql.Request(pool1)
     // const InventoryID = 63;
@@ -279,7 +308,7 @@ const updateInventory = async (options) => {
 
 const updateInventoryItemsTx = async (options, existingInventory) => {
   if (!isWriteToPTEAllowed) {
-    console.log('Wrtie to PTE is disabled temporarily.');
+    console.log("Wrtie to PTE is disabled temporarily.");
     return;
   }
 
@@ -307,7 +336,7 @@ const updateInventoryItemsTx = async (options, existingInventory) => {
 
 const updateInventoryLogTx = async (options, existingInventory) => {
   if (!isWriteToPTEAllowed) {
-    console.log('Wrtie to PTE is disabled temporarily.');
+    console.log("Wrtie to PTE is disabled temporarily.");
     return;
   }
 
@@ -326,8 +355,6 @@ const updateInventoryLogTx = async (options, existingInventory) => {
       .input("isVoid", sql.Int, 0)
       .input("currencyExchangeRate", sql.Int, options.CurrencyConversionRate)
       .input("currencyTypeID", sql.Int, options.CurrencyTypeID)
-      
-      
 
       .input("inventoryId", sql.Int, InventoryID)
       .input("componentID", sql.Int, options.ComponentID);
@@ -345,7 +372,7 @@ const updateInventoryLogTx = async (options, existingInventory) => {
 
 const addComponentsToOC = async (options) => {
   if (!isWriteToPTEAllowed) {
-    console.log('Wrtie to PTE is disabled temporarily.');
+    console.log("Wrtie to PTE is disabled temporarily.");
     return;
   }
 
@@ -436,7 +463,7 @@ const getComponentsWithDSN = async (options) => {
     console.log("Getting ComponentsWithDSN...");
 
     const request = db.request(); // or: new sql.Request(pool1)
-    // const lastTimeStamp = options.RecordDateTime || "2020-10-04 01:12:33.807"; 
+    // const lastTimeStamp = options.RecordDateTime || "2020-10-04 01:12:33.807";
     const lastRecordDSN = options.recordDSN || 1000; //TODO use me
 
     const result = await request.query(
@@ -453,7 +480,10 @@ const getComponentsWithDSN = async (options) => {
 
 const getInventoryForAComponent = async (options) => {
   try {
-    console.log("Getting PTE inventory for a InventoryForAComponent: " + options.ComponentID);
+    console.log(
+      "Getting PTE inventory for a InventoryForAComponent: " +
+        options.ComponentID
+    );
 
     const request = db.request(); // or: new sql.Request(pool1)
 
@@ -471,10 +501,12 @@ const getInventoryForAComponent = async (options) => {
 
 const getOCWithHigherId = async (options) => {
   try {
-    console.log("Getting OC With Higher than Id..."+ options.orderConfirmationID);
+    console.log(
+      "Getting OC With Higher than Id..." + options.orderConfirmationID
+    );
 
     const request = db.request(); // or: new sql.Request(pool1)
-    // const lastTimeStamp = options.RecordDateTime || "2020-10-04 01:12:33.807"; 
+    // const lastTimeStamp = options.RecordDateTime || "2020-10-04 01:12:33.807";
     const lastRecordDSN = options.recordDSN || 1000; //TODO use me
 
     const result = await request.query(
@@ -532,7 +564,7 @@ module.exports = {
   getInventoryForAComponent: getInventoryForAComponent,
   getOCWithHigherId: getOCWithHigherId,
   getRecentOC: getRecentOC,
-  getComponentDetails: getComponentDetails
+  getComponentDetails: getComponentDetails,
 };
 
 /*async function messageHandler() {
