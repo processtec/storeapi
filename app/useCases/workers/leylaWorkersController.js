@@ -16,7 +16,7 @@ const componentSearchService = require("../../services/search/componentsSearchSe
 const logger = require("../../../lib/logger/bunyanLogger").logger("");
 // 5 minutes: 5 * 60 * 1000;
 // 5 seconds: 1 * 5 * 1000;
-const waitTime = 2 * 5 * 1000;
+const waitTime = 2 * 60 * 1000;
 const defaultLocationId = 4;
 const defaultLastModifiedBy = "pmann";
 let pteInventorySyncInterval;
@@ -128,7 +128,7 @@ const createPTEToStoreProductMapping = (options) => {
 
 const runProductSyncDaemon = async () => {
   logger.debug("Scheduling timer now for PTE inventory sync.....");
-  pteInventorySyncInterval = setTimeout(function () {
+  pteInventorySyncInterval = setInterval(function () {
     logger.debug("running PTE inventory sync after waiting NOW!");
     syncPTEInventory();
   }, waitTime);
