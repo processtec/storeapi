@@ -13,7 +13,7 @@ const leylaService = require("../../services/db/leylaService"); //TODO
 const syncService = require("../../services/db/syncService");
 // 5 minutes: 5 * 60 * 1000;
 // 5 seconds: 1 * 5 * 1000;
-const waitTime = 2 * 60 * 1000;
+const waitTime = 2 * 1260 * 1000;
 let leylaOCSyncInterval;
 // working HERE
 // Similar to inventory we have to have a worker checking OCSync table and fetch from the leyla and feed to
