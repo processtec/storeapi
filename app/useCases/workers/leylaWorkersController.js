@@ -139,7 +139,7 @@ const runProductSyncDaemon = async () => {
 
 const syncPTEInventory = async () => {
   const lastSync = await service.lastProductSyncTimeStamp();
-  log.debug(
+  logger.debug(
     {
       lastTimeStamp: lastSync.syncedTimestamp,
       recordDSN: lastSync.recordDSN,
