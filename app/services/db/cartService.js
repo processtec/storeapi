@@ -1749,12 +1749,13 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
   logger.debug(
     {
       id: options.reqId,
+      options: options,
     },
     "updating cart to stock for cartId: ",
     options.cartId
   );
 
-  let shipped = options.requiredQuantity;
+  let shippedQuantity = options.requiredQuantity;
   let pendingQuantity = 0;
   if (options.requiredQuantity > options.availablequantity) {
     shippedQuantity = options.availablequantity;
@@ -1772,7 +1773,7 @@ const updateCartToStockWithShipmentDetails = async (connection, options) => {
       "UPDATE store.cart_stock SET quantity = ?, shippedQuantity = ?,  isActive = ? where idcart = ? AND idstock = ?",
       [
         Math.abs(pendingQuantity),
-        shipped,
+        shippedQuantity,
         isActive,
         options.cartId,
         options.stock.idstock,
