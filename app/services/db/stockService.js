@@ -319,7 +319,7 @@ const findOneStockByComponent = async (connection, options) => {
 
 // idcmp, price, availablequantity, minimumquantity, orderedquantity, maximumquantity
 const create = async (connection, options) => {
-  logger.debug("creating a new default stock item...");
+  logger.debug({ options: options }, "creating a new default stock item...");
 
   let result;
   try {

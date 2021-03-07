@@ -273,7 +273,7 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     return storeProducts;
   }
 
-  const inventoryDetailsForComponent = await leylaService.getInventoryDetailsForAComponent(
+  let inventoryDetailsForComponent = await leylaService.getInventoryDetailsForAComponent(
     options
   );
   if (
@@ -281,10 +281,43 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
     inventoryDetailsForComponent.length == 0
   ) {
     logger.error(
+      {
+        cID: options.ComponentID,
+      },
       "what is wrong with inventoryDetailsForComponent! Unable to find its data in PO details table. Cant do anything.",
       inventoryDetailsForComponent
     );
-    return storeProducts;
+    logger.debug(
+      {
+        cID: options.ComponentID,
+      },
+      "Taking a preventive measure where data from PTE is wrong. Creating dummy data now."
+    );
+    // return storeProducts;
+    inventoryDetailsForComponent = [];
+    inventoryDetailsForComponent[0] = {
+      ComponentID: options.ComponentID,
+      SupplierID: 123,
+      SupplierID: 123, //TODO check this with Andreas
+      SupplierPartNumber: 123,
+      status: SConst.PRODUCT.STATUS.AVAILABLE,
+      UnitPrice: 0.0,
+      PurchaseOrderID: 123,
+
+      SupplierCompany: "item.SupplierCompany",
+      PurchaseOrderCode: "item.PurchaseOrderCode",
+
+      idLocation: "defaultLocationId",
+      lastModifiedBy: "defaultLastModifiedBy",
+    };
+
+    logger.debug(
+      {
+        cID: options.ComponentID,
+        inventoryDetailsForComponent: inventoryDetailsForComponent[0],
+      },
+      "Dummy data created."
+    );
   }
   const item = inventoryDetailsForComponent[0];
 
@@ -305,7 +338,6 @@ const createStoreProductsFromLeylaInventoryForAComponent = async (options) => {
       `Deleted ${options.newAvailableQuantity} available products from store products :-(.`
     );
   } else {
-    console.log("item: ", item);
     const product = createPTEToStoreProductMapping({
       status: SConst.PRODUCT.STATUS.PTE_ORDERED_DELETED,
       item: item,
