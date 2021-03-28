@@ -477,7 +477,7 @@ const checkoutACart = async (options) => {
         Miscellaneous: `Added from Store API for cartID: ${options.cartId}, ocId: ${options.ocId}`,
         ToDollarConversion: 0,
         ItemNumber: index + 10, //increment by 10
-        Shipped: 0,
+        Shipped: options.requiredQuantity,
         CurrencyTypeID: 1,
         CurrencyConversionRate: 1,
         SupplierID: stock.details.idsupplier,

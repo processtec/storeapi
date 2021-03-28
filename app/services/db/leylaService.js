@@ -376,29 +376,95 @@ const addComponentsToOC = async (options) => {
     return;
   }
 
+  const existingComponentInOC = await selectComponentsFromOC(options);
+  if (
+    Array.isArray(existingComponentInOC) &&
+    existingComponentInOC.length > 0
+  ) {
+    const currentLeylaOCRecord = existingComponentInOC[0];
+    const totalShipped = currentLeylaOCRecord.Shipped + options.Shipped;
+    console.log("options.Shipped: " + options.Shipped);
+
+    await updateOCIdComponentShippedQuantity({
+      shipped: totalShipped,
+      ocId: options.ocId,
+      componentId: options.ComponentID,
+    });
+  } else {
+    // do the add
+    try {
+      const request = db
+        .request()
+        .input("orderConfirmationId", sql.Int, options.ocId)
+        .input("componentId", sql.Int, options.ComponentID)
+        .input("quantity", sql.Int, options.quantity)
+        .input("discountToCustomer", sql.Int, options.DiscountToCustomer)
+        .input("margin", sql.Int, options.Margin)
+        .input("quotedPrice", sql.Int, options.QuotedPrice || 0)
+        .input("costType", sql.Int, options.CostType)
+        .input("miscellaneous", sql.VarChar, options.Miscellaneous)
+        .input("toDollarConversion", sql.Int, options.ToDollarConversion)
+        .input("itemNumber", sql.Int, options.ItemNumber)
+        .input("shipped", sql.Int, options.Shipped)
+        .input("currencyTypeID", sql.Int, options.CurrencyTypeID)
+        .input(
+          "currencyConversionRate",
+          sql.Int,
+          options.CurrencyConversionRate
+        )
+        .input("supplierID", sql.Int, options.SupplierID || 123);
+      const result = await request.query(
+        `INSERT INTO [${databaseName}].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES (@orderConfirmationID, @componentID, @quantity, @discountToCustomer ,@margin, @quotedPrice, @costType, @miscellaneous, @toDollarConversion, @itemNumber, @shipped, @currencyTypeID, @currencyConversionRate, @supplierID)`
+      );
+      return result.recordset;
+    } catch (err) {
+      console.error("addComponentsToOC: SQL error", err);
+      return null;
+    } finally {
+      // pool1.close();
+    }
+  }
+};
+
+const selectComponentsFromOC = async (options) => {
+  if (!isWriteToPTEAllowed) {
+    console.log("Wrtie to PTE is disabled temporarily.");
+    return;
+  }
+
   try {
-    const request = db
-      .request()
-      .input("orderConfirmationId", sql.Int, options.ocId)
-      .input("componentId", sql.Int, options.ComponentID)
-      .input("quantity", sql.Int, options.quantity)
-      .input("discountToCustomer", sql.Int, options.DiscountToCustomer)
-      .input("margin", sql.Int, options.Margin)
-      .input("quotedPrice", sql.Int, options.QuotedPrice || 0)
-      .input("costType", sql.Int, options.CostType)
-      .input("miscellaneous", sql.VarChar, options.Miscellaneous)
-      .input("toDollarConversion", sql.Int, options.ToDollarConversion)
-      .input("itemNumber", sql.Int, options.ItemNumber)
-      .input("shipped", sql.Int, options.Shipped)
-      .input("currencyTypeID", sql.Int, options.CurrencyTypeID)
-      .input("currencyConversionRate", sql.Int, options.CurrencyConversionRate)
-      .input("supplierID", sql.Int, options.SupplierID || 123);
+    const request = db.request();
     const result = await request.query(
-      `INSERT INTO [${databaseName}].[Project].[OrderConfirmationDetail] (OrderConfirmationID, ComponentID, Quantity, DiscountToCustomer ,Margin, QuotedPrice, CostType, Miscellaneous, ToDollarConversion, ItemNumber, Shipped, CurrencyTypeID, CurrencyConversionRate, SupplierID) VALUES (@orderConfirmationID, @componentID, @quantity, @discountToCustomer ,@margin, @quotedPrice, @costType, @miscellaneous, @toDollarConversion, @itemNumber, @shipped, @currencyTypeID, @currencyConversionRate, @supplierID)`
+      `SELECT * FROM [${databaseName}].[Project].[OrderConfirmationDetail] WHERE [OrderConfirmationID] = ${options.ocId} AND [ComponentID] = ${options.ComponentID}`
     );
     return result.recordset;
   } catch (err) {
     console.error("addComponentsToOC: SQL error", err);
+    return null;
+  } finally {
+    // pool1.close();
+  }
+};
+
+const updateOCIdComponentShippedQuantity = async (options) => {
+  if (!isWriteToPTEAllowed) {
+    console.log("Wrtie to PTE is disabled temporarily.");
+    return;
+  }
+
+  try {
+    const request = db
+      .request()
+      .input("quantityShipped", sql.Int, options.shipped)
+      .input("ocId", sql.Int, options.ocId)
+      .input("componentId", sql.Int, options.componentId);
+
+    const result = await request.query(
+      `UPDATE [${databaseName}].[Project].[OrderConfirmationDetail] SET Shipped = @quantityShipped WHERE OrderConfirmationID = @ocId AND ComponentID = @componentId`
+    );
+    return result.recordset;
+  } catch (err) {
+    console.error("updateOCIdComponentShippedQuantity SQL error", err);
     return null;
   } finally {
     // pool1.close();
